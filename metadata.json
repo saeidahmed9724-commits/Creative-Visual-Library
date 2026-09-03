@@ -1,0 +1,6 @@
+{
+  "name": "Creative Visual Library",
+  "description": "A personal creative memory web app to store, organize, and reuse visual directions, brand DNA, visual analyses, references, prompts, and camera angles.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

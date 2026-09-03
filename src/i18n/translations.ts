@@ -1,0 +1,258 @@
+export type Language = 'en' | 'ar';
+
+export const translations = {
+  en: {
+    // App header
+    appName: 'Creative Visual Library',
+    appShortName: 'CVL',
+    searchPlaceholder: 'Search anything...',
+    pressToSearch: '⌘K',
+    addNew: 'Add New',
+    notifications: 'Notifications',
+    toggleTheme: 'Switch Theme',
+
+    // Sidebar
+    dashboard: 'Dashboard',
+    mainMenu: 'MAIN',
+    brands: 'Brands',
+    promptLibrary: 'Prompt Library',
+    cameraAngles: 'Camera Angles',
+    creativeReferences: 'Creative References',
+    allReferences: 'All References',
+    products: 'Products',
+    favoritesMenu: 'FAVORITES',
+    starred: 'Starred',
+    recentlyUsed: 'Recently Used',
+    trash: 'Trash',
+    settings: 'Settings & Backup',
+    profileRole: 'Creative Director',
+    profilePlan: 'Studio Plan',
+    unlockFullPower: 'Export & Backup',
+    unlockDesc: 'Download full JSON vault & store locally.',
+    backupButton: 'Backup Vault',
+
+    // Brand sub-tabs
+    overview: 'Overview',
+    brandDna: 'Brand Core (DNA)',
+    visualDirections: 'Visual Directions',
+    references: 'References',
+    notesTab: 'Notes',
+
+    // Brand Header
+    founded: 'Founded',
+    category: 'Category',
+    personality: 'Personality',
+    visualStyle: 'Visual Style',
+    brandColors: 'Brand Colors',
+    editBrand: 'Edit Brand',
+    viewAll: 'View All',
+    addNewBrand: 'Add Brand',
+
+    // Sections
+    analysesCount: 'Analyses',
+    addVisualDirection: 'Add Direction',
+    addAnalysis: 'Add Analysis',
+    importAnalysis: 'Import Analysis (Paste)',
+    addProduct: 'Add Product',
+    addNewPrompt: 'Add New Prompt',
+    addNewAngle: 'Add New Angle',
+    addNewCreativeRef: 'Add Creative Reference',
+
+    // Color Palette Bar
+    colorPalette: 'Color Palette',
+    typography: 'Typography',
+    primaryFont: 'Poppins',
+    fontWeights: 'Regular • Medium • SemiBold',
+
+    // Detailed Fields
+    composition: 'Composition',
+    camera: 'Camera Angle',
+    lensPerspective: 'Lens / Perspective',
+    lighting: 'Lighting',
+    environment: 'Environment',
+    materials: 'Materials & Textures',
+    subject: 'Subject / Focus',
+    styling: 'Styling & Wardrobe',
+    mood: 'Mood & Atmosphere',
+    photography: 'Photography Details',
+    usefulElements: 'Useful Elements',
+    avoid: 'Things to Avoid',
+    notes: 'Notes',
+    copyPrompt: 'Copy Prompt',
+    promptCopied: 'Copied to clipboard!',
+
+    // Brand Core fields
+    brandPositioning: 'Brand Positioning',
+    generalVisualIdentity: 'General Visual Identity',
+    generalColors: 'General Colors',
+    generalPhotographyPrinciples: 'General Photography Principles',
+
+    // Actions & Buttons
+    save: 'Save Changes',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    edit: 'Edit',
+    import: 'Import & Parse',
+    copyText: 'Copy Text',
+    copied: 'Copied!',
+    filter: 'Filter',
+    search: 'Search',
+    all: 'All',
+    close: 'Close',
+    exportBackup: 'Export Full Library (JSON)',
+    importBackup: 'Restore from JSON Backup',
+    resetDemoData: 'Reset to Demo Studio Data',
+
+    // Empty states
+    noItemsFound: 'No items found matching your search.',
+    noPrompts: 'No prompts saved yet in this category.',
+    noAnalyses: 'No visual analyses yet. Click "Add Analysis" or "Import Analysis".',
+    noProducts: 'No products registered for this brand yet.',
+    noReferences: 'No reference images added yet.',
+
+    // Import modal
+    importModalTitle: 'Import Visual Analysis from ChatGPT / AI',
+    importModalSubtitle: 'Paste the raw text analysis generated outside the app. The rule-based parser will extract all fields automatically.',
+    pastePlaceholder: 'Paste ChatGPT analysis here...\n\nVISUAL STYLE:\nLuxury editorial beauty photography\n\nCOMPOSITION:\nCentered hero shot with generous negative space\n\nLIGHTING:\nSoft directional key light with gentle rim bounce\n\nCOLOR PALETTE:\nDeep plum, muted purple, ivory and soft gold\n\nCAMERA:\n45 degree medium perspective...',
+    targetBrand: 'Brand',
+    targetDirection: 'Visual Direction',
+    analysisTitleLabel: 'Analysis Title',
+    parsedPreview: 'Parsed Fields Preview',
+    saveAnalysis: 'Save Visual Analysis',
+    uploadImages: 'Reference Images (URLs or paste)',
+    imageUrlsPlaceholder: 'Enter image URLs separated by comma or new lines',
+
+    // Creative Ref
+    whatILike: 'What I like',
+    whatILikePlaceholder: 'E.g., camera angle, dramatic rim lighting, product composition...',
+    usefulFor: 'Useful for',
+    usefulForPlaceholder: 'E.g., cosmetic serum launches, luxury hair campaigns...',
+  },
+  ar: {
+    // App header
+    appName: 'Creative Visual Library',
+    appShortName: 'CVL',
+    searchPlaceholder: 'ابحث عن أي شيء...',
+    pressToSearch: '⌘K',
+    addNew: 'إضافة جديد',
+    notifications: 'الإشعارات',
+    toggleTheme: 'تبديل المظهر',
+
+    // Sidebar
+    dashboard: 'لوحة التحكم',
+    mainMenu: 'القائمة الرئيسية',
+    brands: 'العلامات التجارية',
+    promptLibrary: 'مكتبة البرومتس',
+    cameraAngles: 'زوايا الكاميرا',
+    creativeReferences: 'المراجع الإبداعية',
+    allReferences: 'كل المراجع',
+    products: 'المنتجات',
+    favoritesMenu: 'المفضلة',
+    starred: 'المميزة بنجمة',
+    recentlyUsed: 'المستخدمة مؤخراً',
+    trash: 'سلة المحذوفات',
+    settings: 'الإعدادات والنسخ الاحتياطي',
+    profileRole: 'المدير الإبداعي',
+    profilePlan: 'خطة الأستوديو',
+    unlockFullPower: 'النسخ الاحتياطي والتصدير',
+    unlockDesc: 'حمّل مكتبتك بالكامل بصيغة JSON واحفظها بأمان.',
+    backupButton: 'تصدير المكتبة',
+
+    // Brand sub-tabs
+    overview: 'نظرة عامة',
+    brandDna: 'جوهر البراند (DNA)',
+    visualDirections: 'الاتجاهات البصرية',
+    references: 'المراجع البصرية',
+    notesTab: 'ملاحظات',
+
+    // Brand Header
+    founded: 'سنة التأسيس',
+    category: 'التصنيف',
+    personality: 'شخصية البراند',
+    visualStyle: 'النمط البصري',
+    brandColors: 'ألوان البراند',
+    editBrand: 'تعديل البراند',
+    viewAll: 'عرض الكل',
+    addNewBrand: 'إضافة براند',
+
+    // Sections
+    analysesCount: 'تحليل محفوظ',
+    addVisualDirection: 'إضافة اتجاه بصري',
+    addAnalysis: 'إضافة تحليل جديد',
+    importAnalysis: 'استيراد تحليل (لصق)',
+    addProduct: 'إضافة منتج',
+    addNewPrompt: 'إضافة برومت جديد',
+    addNewAngle: 'إضافة زاوية جديدة',
+    addNewCreativeRef: 'إضافة مرجع إبداعي',
+
+    // Color Palette Bar
+    colorPalette: 'لوحة الألوان',
+    typography: 'الخطوط والطباعة',
+    primaryFont: 'Poppins / Tajawal',
+    fontWeights: 'عادي • متوسط • شبه عريض',
+
+    // Detailed Fields
+    composition: 'التكوين والكادر',
+    camera: 'زاوية الكاميرا',
+    lensPerspective: 'العدسة والمنظور',
+    lighting: 'الإضاءة وتوزيع الضوء',
+    environment: 'البيئة وموقع التصوير',
+    materials: 'الخامات والأسطح',
+    subject: 'الموضوع والعنصر الأساسي',
+    styling: 'التنسيق والملابس والإكسسوارات',
+    mood: 'المود والأجواء العامة',
+    photography: 'تفاصيل التصوير الفوتوغرافي',
+    usefulElements: 'عناصر مفيدة للاستخدام',
+    avoid: 'أشياء يجب تجنبها',
+    notes: 'ملاحظات',
+    copyPrompt: 'نسخ البرومت',
+    promptCopied: 'تم نسخ النص إلى الحافظة!',
+
+    // Brand Core fields
+    brandPositioning: 'مكانة البراند في السوق',
+    generalVisualIdentity: 'الهوية البصرية العامة',
+    generalColors: 'الألوان العامة والمواصفات',
+    generalPhotographyPrinciples: 'مبادئ التصوير العامة',
+
+    // Actions & Buttons
+    save: 'حفظ التغييرات',
+    cancel: 'إلغاء',
+    delete: 'حذف',
+    edit: 'تعديل',
+    import: 'استيراد وتحليل النص',
+    copyText: 'نسخ النص',
+    copied: 'تم النسخ!',
+    filter: 'تصفية',
+    search: 'بحث',
+    all: 'الكل',
+    close: 'إغلاق',
+    exportBackup: 'تصدير المكتبة بالكامل (JSON)',
+    importBackup: 'استعادة من ملف JSON احتياطي',
+    resetDemoData: 'إعادة تعيين لبيانات الأستوديو الافتراضية',
+
+    // Empty states
+    noItemsFound: 'لم يتم العثور على نتائج مطابقة لبحثك.',
+    noPrompts: 'لا توجد نصوص برومت في هذا التصنيف بعد.',
+    noAnalyses: 'لا توجد تحليلات بصرية بعد. انقر على "إضافة تحليل" أو "استيراد تحليل".',
+    noProducts: 'لم يتم تسجيل منتجات لهذا البراند بعد.',
+    noReferences: 'لم تتم إضافة صور مراجع بعد.',
+
+    // Import modal
+    importModalTitle: 'استيراد تحليل بصري من ChatGPT / AI',
+    importModalSubtitle: 'الصق نص التحليل الذي حصلت عليه خارج الموقع. سيقوم المحلل النصي بتوزيع كل سطر تلقائيًا في الخانة المخصصة له بدون AI.',
+    pastePlaceholder: 'الصق نص تحليل ChatGPT هنا...\n\nVISUAL STYLE:\nLuxury editorial beauty photography\n\nCOMPOSITION:\nCentered hero shot with generous negative space\n\nLIGHTING:\nSoft directional key light with gentle rim bounce\n\nCOLOR PALETTE:\nDeep plum, muted purple, ivory and soft gold\n\nCAMERA:\n45 degree medium perspective...',
+    targetBrand: 'البراند المستهدف',
+    targetDirection: 'الاتجاه البصري',
+    analysisTitleLabel: 'عنوان التحليل',
+    parsedPreview: 'معاينة الحقول المستخرجة',
+    saveAnalysis: 'حفظ التحليل البصري',
+    uploadImages: 'صور المراجع (روابط أو لصق)',
+    imageUrlsPlaceholder: 'أدخل روابط الصور مفصولة بفواصل أو أسطر جديدة',
+
+    // Creative Ref
+    whatILike: 'ما أعجبني في التنفيذ',
+    whatILikePlaceholder: 'مثال: زاوية الكاميرا، انعكاسات الإضاءة، توزيع المنتجات...',
+    usefulFor: 'مفيد لـ',
+    usefulForPlaceholder: 'مثال: حملات إطلاق السيروم، تصوير منتجات التجميل الفاخرة...',
+  },
+};
