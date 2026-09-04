@@ -146,6 +146,15 @@ export const translations = {
     removeImage: 'Remove Image',
     storagePolicyNotice: 'Storage Policy Required',
     runStoragePolicyPrompt: 'Make sure to run the storage RLS policy in Supabase SQL Editor if you see permission errors.',
+
+    // Prompt Result Image
+    promptResultImage: 'Prompt Output / Result Image',
+    promptImageHelp: 'Upload the visual result image produced by this prompt to Supabase Storage',
+    uploadPromptImage: 'Upload Output Image',
+    uploadingPromptImage: 'Uploading prompt output to Supabase Storage...',
+    uploadedPromptImage: 'Prompt output image saved',
+    dragDropPromptImage: 'Drag & drop result image or click to browse',
+    viewFullImage: 'View Full Image',
   },
   ar: {
     // App header
@@ -292,5 +301,14 @@ export const translations = {
     removeImage: 'حذف الصورة',
     storagePolicyNotice: 'مطلوب تفعيل سياسة التخزين RLS',
     runStoragePolicyPrompt: 'تأكد من تطبيق كود RLS الخاص بـ Storage في محرر SQL بـ Supabase في حال ظهر خطأ صلاحيات.',
+
+    // Prompt Result Image
+    promptResultImage: 'صورة نتيجة البرومبت (Output Image)',
+    promptImageHelp: 'ارفع الصورة التي يولدها هذا البرومبت لتوضيح النتيجة وحفظها في Supabase Storage',
+    uploadPromptImage: 'رفع صورة النتيجة',
+    uploadingPromptImage: 'جارٍ رفع الصورة الناتجة إلى Supabase Storage...',
+    uploadedPromptImage: 'تم رفع صورة النتيجة بنجاح',
+    dragDropPromptImage: 'اسحب وأفلت صورة نتيجة البرومبت أو اضغط للاختيار',
+    viewFullImage: 'عرض الصورة بالحجم الكامل',
   },
 };

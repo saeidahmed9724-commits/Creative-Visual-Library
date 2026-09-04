@@ -90,6 +90,7 @@ export interface PromptItem {
   category: string; // e.g. "Editorial", "Product", "Motion", "Portrait", "Minimal"
   style?: string;
   usage?: string;
+  imageUrl?: string;
   referenceImages?: string[];
   brandId?: string;
   notes?: string;

@@ -250,7 +250,19 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [prompts, setPrompts] = useState<PromptItem[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY + '_prompts');
-      return stored ? JSON.parse(stored) : INITIAL_PROMPTS;
+      if (stored) {
+        const parsed: PromptItem[] = JSON.parse(stored);
+        return parsed.map((p) => {
+          if (!p.imageUrl) {
+            const match = INITIAL_PROMPTS.find((ip) => ip.id === p.id);
+            if (match?.imageUrl) {
+              return { ...p, imageUrl: match.imageUrl };
+            }
+          }
+          return p;
+        });
+      }
+      return INITIAL_PROMPTS;
     } catch {
       return INITIAL_PROMPTS;
     }
