@@ -28,7 +28,7 @@ export const ImportAnalysisModal: React.FC = () => {
   } = useLibrary();
 
   const [rawText, setRawText] = useState('');
-  const [targetBrandId, setTargetBrandId] = useState(activeBrandId || 'mabelle');
+  const [targetBrandId, setTargetBrandId] = useState(activeBrandId || brands[0]?.id || '');
   const [targetDirId, setTargetDirId] = useState<string>('');
   const [title, setTitle] = useState('');
   const [referenceUrls, setReferenceUrls] = useState('');

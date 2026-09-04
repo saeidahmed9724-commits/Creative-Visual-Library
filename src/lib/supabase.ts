@@ -39,11 +39,32 @@ export function normalizeSupabaseUrl(rawUrl: string): string {
   return u.replace(/\/+$/, '');
 }
 
-const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
-const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+// Built-in project credentials fallback (ensures production deployment on Vercel works seamlessly out-of-the-box even before manual environment variables)
+export const DEFAULT_SUPABASE_URL = 'https://qdwvohwepfdsidehmgcj.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_u-qZJVWrFgA2exVJzeZdiA_A2Mq65pm';
 
-export const supabaseUrl = normalizeSupabaseUrl(rawUrl);
-export const supabaseAnonKey = rawKey;
+export function getResolvedSupabaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('supabase_custom_url');
+    if (custom && custom.trim()) return normalizeSupabaseUrl(custom);
+  }
+  const envUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
+  if (envUrl) return normalizeSupabaseUrl(envUrl);
+  return DEFAULT_SUPABASE_URL;
+}
+
+export function getResolvedSupabaseKey(): string {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('supabase_custom_key');
+    if (custom && custom.trim()) return custom.trim();
+  }
+  const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
+  if (envKey) return envKey;
+  return DEFAULT_SUPABASE_ANON_KEY;
+}
+
+export const supabaseUrl = getResolvedSupabaseUrl();
+export const supabaseAnonKey = getResolvedSupabaseKey();
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl && 
@@ -55,6 +76,27 @@ export const isSupabaseConfigured = Boolean(
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
+
+/**
+ * Check whether a specific brand ID exists in Supabase
+ */
+export async function checkBrandExistsInSupabase(id: string): Promise<boolean> {
+  if (!supabase) return false;
+  try {
+    const { data, error } = await supabase
+      .from('brands')
+      .select('id')
+      .eq('id', id)
+      .limit(1);
+
+    if (error || !data || data.length === 0) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Fetch all brands from Supabase 'brands' table

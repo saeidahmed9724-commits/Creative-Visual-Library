@@ -27,6 +27,7 @@ export const DashboardView: React.FC = () => {
     toggleStarDirection,
     setSelectedDirectionId,
     setBrandSubTab,
+    setIsAddBrandModalOpen,
     setIsAddDirectionModalOpen,
     setIsAddProductModalOpen,
     setIsAddPromptModalOpen,
@@ -73,6 +74,30 @@ export const DashboardView: React.FC = () => {
 
   return (
     <div className="space-y-8 pb-12">
+      {/* If no active brand, show clean zero-mock setup prompt */}
+      {!activeBrand && (
+        <div className="rounded-2xl bg-gradient-to-r from-violet-950/30 via-[#111111] to-[#0A0A0A] border border-violet-500/20 p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="space-y-1 text-center md:text-start">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+              <h3 className="text-sm font-semibold text-white">
+                Supabase Live Database Active • Zero Fake Brands
+              </h3>
+            </div>
+            <p className="text-xs text-[#A1A1AA]">
+              تم حذف كل البراندات الوهمية وإلغاء التخزين المحلي بالكامل. قاعدة بياناتك الآن نظيفة ومتصلة مباشرة بسحابة Supabase.
+            </p>
+          </div>
+          <button
+            onClick={() => setIsAddBrandModalOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-[0_0_20px_rgba(124,58,237,0.35)] transition-all cursor-pointer whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ {t.addNewBrand || 'Create Brand'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Row 1: Visual Directions & References */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Visual Directions (7 cols on lg) */}

@@ -15,6 +15,8 @@ import {
   Lightbulb,
   FileUp,
   Database,
+  Cloud,
+  HardDrive,
 } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 
@@ -38,6 +40,7 @@ export const TopBar: React.FC = () => {
     setIsSupabaseModalOpen,
     isSupabaseConfigured,
     supabaseStatus,
+    isBrandSavedInSupabase,
   } = useLibrary();
 
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -91,51 +94,88 @@ export const TopBar: React.FC = () => {
           </kbd>
         </button>
 
-        {/* Brand Switcher Pill */}
-        {activeBrand && (
+        {/* Brand Switcher Pill or Add Brand button */}
+        {activeBrand ? (
           <div className="relative" ref={brandMenuRef}>
             <button
               onClick={() => setIsBrandSelectOpen(!isBrandSelectOpen)}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111111] hover:bg-[#1A1A1A] border border-[#1F1F1F] text-xs font-medium text-[#A1A1AA] hover:text-white transition-all"
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111111] hover:bg-[#1A1A1A] border border-[#1F1F1F] text-xs font-medium text-[#A1A1AA] hover:text-white transition-all cursor-pointer"
             >
               <Building2 className="w-3.5 h-3.5 text-violet-400" />
               <span className="truncate max-w-[130px]">{activeBrand.name}</span>
+              
+              {/* Cloud vs Local tiny indicator */}
+              {isBrandSavedInSupabase(activeBrand.id) ? (
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" title={t.savedInSupabase} />
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-amber-500/80" title={t.localOnly} />
+              )}
+
               <ChevronDown className="w-3 h-3 text-[#52525B]" />
             </button>
 
             {isBrandSelectOpen && (
-              <div className="absolute left-0 mt-1.5 w-52 rounded-xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95">
-                <div className="px-2 py-1 text-[10px] uppercase font-bold text-[#52525B] tracking-wider">
-                  {t.brands}
+              <div className="absolute left-0 mt-1.5 w-60 rounded-xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95">
+                <div className="px-2 py-1 text-[10px] uppercase font-bold text-[#52525B] tracking-wider flex items-center justify-between">
+                  <span>{t.brands}</span>
+                  <span className="text-[9px] text-[#52525B] font-mono">Cloud / Local</span>
                 </div>
-                {brands.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => {
-                      setActiveBrandId(b.id);
-                      setIsBrandSelectOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                      b.id === activeBrandId
-                        ? 'bg-violet-600/20 text-white font-medium border border-violet-500/40'
-                        : 'text-[#A1A1AA] hover:bg-white/5 hover:text-white'
-                    }`}
-                  >
-                    <span className="truncate">{b.name}</span>
-                    <div className="flex items-center gap-1">
-                      {b.brandColors.slice(0, 3).map((c, i) => (
-                        <span
-                          key={i}
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: c }}
-                        />
-                      ))}
-                    </div>
-                  </button>
-                ))}
+                {brands.map((b) => {
+                  const inCloud = isBrandSavedInSupabase(b.id) || b.isSavedInSupabase;
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => {
+                        setActiveBrandId(b.id);
+                        setIsBrandSelectOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-colors cursor-pointer ${
+                        b.id === activeBrandId
+                          ? 'bg-violet-600/20 text-white font-medium border border-violet-500/40'
+                          : 'text-[#A1A1AA] hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        {inCloud ? (
+                          <Cloud className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                        ) : (
+                          <HardDrive className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{b.name}</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                          inCloud 
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' 
+                            : 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {inCloud ? 'Supabase' : 'Local'}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          {b.brandColors.slice(0, 2).map((c, i) => (
+                            <span
+                              key={i}
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: c }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
+        ) : (
+          <button
+            onClick={() => setIsAddBrandModalOpen(true)}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-violet-600/15 hover:bg-violet-600/25 border border-violet-500/30 hover:border-violet-500/50 text-xs font-medium text-violet-300 hover:text-white transition-all cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ {t.addNewBrand || 'Create Brand'}</span>
+          </button>
         )}
       </div>
 

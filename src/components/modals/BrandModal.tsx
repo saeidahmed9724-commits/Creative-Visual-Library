@@ -138,48 +138,55 @@ CREATE POLICY "Allow public update brand-images" ON storage.objects FOR UPDATE U
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    setIsSubmitting(true);
 
-    if (editingBrand) {
-      updateBrand(editingBrand.id, {
-        name,
-        category,
-        founded,
-        personality,
-        visualStyle,
-        description,
-        brandColors: colors,
-        coverImage,
-      });
-    } else {
-      const newB = addBrand({
-        name,
-        category: category || 'Luxury Care',
-        founded: founded || '2024',
-        personality: personality || 'Premium • Modern',
-        visualStyle: visualStyle || 'Editorial • Cinematic',
-        description,
-        coverImage,
-        brandColors: colors,
-        brandCore: {
+    try {
+      if (editingBrand) {
+        await updateBrand(editingBrand.id, {
+          name,
+          category,
+          founded,
           personality,
-          positioning: '',
-          generalVisualIdentity: visualStyle,
-          generalColors: colors.join(', '),
-          typography: 'Poppins • Sans-serif',
-          materials: 'Glass, Metal, Matte',
-          generalPhotographyPrinciples: 'Diffused studio lighting, rich contrast',
-          thingsToAvoid: 'Cluttered backgrounds, flat lighting',
-          notes: '',
-        },
-      });
-      setActiveBrandId(newB.id);
-    }
+          visualStyle,
+          description,
+          brandColors: colors,
+          coverImage,
+        });
+      } else {
+        const newB = await addBrand({
+          name,
+          category: category || 'Luxury Care',
+          founded: founded || '2024',
+          personality: personality || 'Premium • Modern',
+          visualStyle: visualStyle || 'Editorial • Cinematic',
+          description,
+          coverImage,
+          brandColors: colors,
+          brandCore: {
+            personality,
+            positioning: '',
+            generalVisualIdentity: visualStyle,
+            generalColors: colors.join(', '),
+            typography: 'Poppins • Sans-serif',
+            materials: 'Glass, Metal, Matte',
+            generalPhotographyPrinciples: 'Diffused studio lighting, rich contrast',
+            thingsToAvoid: 'Cluttered backgrounds, flat lighting',
+            notes: '',
+          },
+        });
+        setActiveBrandId(newB.id);
+      }
 
-    setIsAddBrandModalOpen(false);
-    setEditingBrand(null);
+      setIsAddBrandModalOpen(false);
+      setEditingBrand(null);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -507,9 +514,11 @@ CREATE POLICY "Allow public update brand-images" ON storage.objects FOR UPDATE U
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md"
+              disabled={isSubmitting}
+              className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              {t.save}
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin text-white" />}
+              <span>{isSubmitting ? t.savingToSupabase : t.save}</span>
             </button>
           </div>
         </form>

@@ -24,6 +24,8 @@ export interface Brand {
   brandCore: BrandCore;
   notes?: string;
   starred?: boolean;
+  isSavedInSupabase?: boolean;
+  lastSyncedAt?: string;
   createdAt: string;
 }
 

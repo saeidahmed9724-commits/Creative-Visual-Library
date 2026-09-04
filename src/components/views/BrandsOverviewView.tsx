@@ -6,6 +6,9 @@ import {
   Edit,
   Trash2,
   Sparkles,
+  Cloud,
+  HardDrive,
+  RefreshCw,
 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 
@@ -21,6 +24,9 @@ export const BrandsOverviewView: React.FC = () => {
     setIsAddBrandModalOpen,
     setEditingBrand,
     deleteBrand,
+    isBrandSavedInSupabase,
+    syncBrandToSupabase,
+    isSyncingBrandId,
   } = useLibrary();
 
   const handleSelectBrand = (brandId: string) => {
@@ -102,9 +108,49 @@ export const BrandsOverviewView: React.FC = () => {
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
-                        {brand.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-white group-hover:text-purple-300 transition-colors">
+                          {brand.name}
+                        </h3>
+
+                        {/* Cloud vs Local Badge */}
+                        {isBrandSavedInSupabase(brand.id) || brand.isSavedInSupabase ? (
+                          <span
+                            title={t.savedInSupabaseDesc}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-medium"
+                          >
+                            <Cloud className="w-3 h-3" />
+                            <span>Supabase</span>
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <span
+                              title={t.localOnlyDesc}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-medium"
+                            >
+                              <HardDrive className="w-3 h-3" />
+                              <span>Local</span>
+                            </span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                syncBrandToSupabase(brand.id);
+                              }}
+                              disabled={isSyncingBrandId === brand.id}
+                              className="px-2 py-0.5 rounded-full bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white border border-amber-500/40 text-[9px] font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                              title={t.saveToSupabaseNow}
+                            >
+                              {isSyncingBrandId === brand.id ? (
+                                <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                              ) : (
+                                <Cloud className="w-2.5 h-2.5" />
+                              )}
+                              <span>Sync</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
                       <span className="text-xs text-purple-300/80 font-medium">
                         {brand.category} • Est. {brand.founded}
                       </span>
@@ -121,14 +167,13 @@ export const BrandsOverviewView: React.FC = () => {
                     >
                       <Edit className="w-3.5 h-3.5" />
                     </button>
-                    {brands.length > 1 && (
-                      <button
-                        onClick={() => deleteBrand(brand.id)}
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => deleteBrand(brand.id)}
+                      className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
+                      title={t.delete || 'Delete'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Sparkles } from 'lucide-react';
+import { Edit2, Cloud, HardDrive, RefreshCw, CheckCircle2, Database } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 import { BrandSubTab } from '../types';
 
@@ -11,9 +11,16 @@ export const BrandHeader: React.FC = () => {
     setBrandSubTab,
     setEditingBrand,
     setIsAddBrandModalOpen,
+    isBrandSavedInSupabase,
+    syncBrandToSupabase,
+    isSyncingBrandId,
+    setIsSupabaseModalOpen,
   } = useLibrary();
 
   if (!activeBrand) return null;
+
+  const isSavedInCloud = isBrandSavedInSupabase(activeBrand.id) || activeBrand.isSavedInSupabase;
+  const isSyncingThis = isSyncingBrandId === activeBrand.id;
 
   const subTabs: { id: BrandSubTab; label: string }[] = [
     { id: 'overview', label: t.overview },
@@ -84,9 +91,49 @@ export const BrandHeader: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
                   {activeBrand.name}
                 </h1>
-                <span className="bg-violet-900/30 text-violet-400 text-[10px] font-bold px-2 py-0.5 rounded border border-violet-500/30 uppercase tracking-wider">
-                  PREMIUM BRAND
-                </span>
+                
+                {/* Supabase Real-Time Persistence Badge */}
+                {isSavedInCloud ? (
+                  <div 
+                    title={t.savedInSupabaseDesc}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-semibold shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-help"
+                  >
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <Cloud className="w-3.5 h-3.5" />
+                    <span>{t.savedInSupabase}</span>
+                    <span className="text-[10px] text-emerald-300/80 font-mono hidden sm:inline">(Supabase)</span>
+                  </div>
+                ) : (
+                  <div 
+                    title={t.localOnlyDesc}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-semibold shadow-sm"
+                  >
+                    <HardDrive className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{t.localOnly}</span>
+                    <button
+                      onClick={() => syncBrandToSupabase(activeBrand.id)}
+                      disabled={isSyncingThis}
+                      className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/25 hover:bg-amber-500/40 text-amber-200 hover:text-white border border-amber-500/50 text-[10px] font-bold transition-all cursor-pointer disabled:opacity-50"
+                      title={t.saveToSupabaseNow}
+                    >
+                      {isSyncingThis ? (
+                        <>
+                          <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                          <span>{t.savingToSupabase}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="w-2.5 h-2.5" />
+                          <span>{t.saveToSupabaseNow}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
                 <button
                   onClick={() => {
                     setEditingBrand(activeBrand);

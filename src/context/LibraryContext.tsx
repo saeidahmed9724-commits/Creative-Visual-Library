@@ -66,10 +66,14 @@ interface LibraryContextType {
   activeBrand: Brand | undefined;
 
   // CRUD Operations
-  addBrand: (brand: Omit<Brand, 'id' | 'createdAt'>) => Brand;
-  updateBrand: (id: string, updates: Partial<Brand>) => void;
-  deleteBrand: (id: string) => void;
+  addBrand: (brand: Omit<Brand, 'id' | 'createdAt'>) => Promise<Brand>;
+  updateBrand: (id: string, updates: Partial<Brand>) => Promise<void>;
+  deleteBrand: (id: string) => Promise<void>;
   toggleStarBrand: (id: string) => void;
+  syncBrandToSupabase: (id: string) => Promise<boolean>;
+  isBrandSavedInSupabase: (id: string) => boolean;
+  supabaseBrandIds: Set<string>;
+  isSyncingBrandId: string | null;
 
   addDirection: (direction: Omit<VisualDirection, 'id' | 'createdAt'>) => VisualDirection;
   updateDirection: (id: string, updates: Partial<VisualDirection>) => void;
@@ -205,111 +209,37 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Navigation State
   const [activeNav, setActiveNav] = useState<ActiveNavSection>('dashboard');
-  const [activeBrandId, setActiveBrandId] = useState<string>('mabelle');
+  const [activeBrandId, setActiveBrandId] = useState<string>('');
   const [brandSubTab, setBrandSubTab] = useState<BrandSubTab>('overview');
   const [selectedDirectionId, setSelectedDirectionId] = useState<string | null>(null);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
 
-  // Entities loaded from localStorage or defaults
-  const [brands, setBrands] = useState<Brand[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_brands');
-      return stored ? JSON.parse(stored) : INITIAL_BRANDS;
-    } catch {
-      return INITIAL_BRANDS;
-    }
-  });
+  // Entities - Zero fake brands. Purely fetched/synced with Supabase.
+  // NO localStorage storage for brands or entities.
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [directions, setDirections] = useState<VisualDirection[]>([]);
+  const [analyses, setAnalyses] = useState<VisualAnalysis[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [prompts, setPrompts] = useState<PromptItem[]>([]);
+  const [cameraAngles, setCameraAngles] = useState<CameraAngle[]>(INITIAL_CAMERA_ANGLES);
+  const [creativeReferences, setCreativeReferences] = useState<CreativeReference[]>(INITIAL_CREATIVE_REFERENCES);
+  const [galleryReferences, setGalleryReferences] = useState<ReferenceImageItem[]>([]);
 
-  const [directions, setDirections] = useState<VisualDirection[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_directions');
-      return stored ? JSON.parse(stored) : INITIAL_DIRECTIONS;
-    } catch {
-      return INITIAL_DIRECTIONS;
-    }
-  });
-
-  const [analyses, setAnalyses] = useState<VisualAnalysis[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_analyses');
-      return stored ? JSON.parse(stored) : INITIAL_ANALYSES;
-    } catch {
-      return INITIAL_ANALYSES;
-    }
-  });
-
-  const [products, setProducts] = useState<Product[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_products');
-      return stored ? JSON.parse(stored) : INITIAL_PRODUCTS;
-    } catch {
-      return INITIAL_PRODUCTS;
-    }
-  });
-
-  const [prompts, setPrompts] = useState<PromptItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_prompts');
-      if (stored) {
-        const parsed: PromptItem[] = JSON.parse(stored);
-        return parsed.map((p) => {
-          if (!p.imageUrl) {
-            const match = INITIAL_PROMPTS.find((ip) => ip.id === p.id);
-            if (match?.imageUrl) {
-              return { ...p, imageUrl: match.imageUrl };
-            }
-          }
-          return p;
-        });
-      }
-      return INITIAL_PROMPTS;
-    } catch {
-      return INITIAL_PROMPTS;
-    }
-  });
-
-  const [cameraAngles, setCameraAngles] = useState<CameraAngle[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_angles');
-      return stored ? JSON.parse(stored) : INITIAL_CAMERA_ANGLES;
-    } catch {
-      return INITIAL_CAMERA_ANGLES;
-    }
-  });
-
-  const [creativeReferences, setCreativeReferences] = useState<CreativeReference[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_cref');
-      return stored ? JSON.parse(stored) : INITIAL_CREATIVE_REFERENCES;
-    } catch {
-      return INITIAL_CREATIVE_REFERENCES;
-    }
-  });
-
-  const [galleryReferences, setGalleryReferences] = useState<ReferenceImageItem[]>(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY + '_gallery');
-      return stored ? JSON.parse(stored) : (INITIAL_GALLERY_REFERENCES as unknown as ReferenceImageItem[]);
-    } catch {
-      return INITIAL_GALLERY_REFERENCES as unknown as ReferenceImageItem[];
-    }
-  });
-
-  // Sync to localStorage
+  // Purge any legacy localStorage keys to ensure zero fake or cached data remains
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY + '_brands', JSON.stringify(brands));
-      localStorage.setItem(STORAGE_KEY + '_directions', JSON.stringify(directions));
-      localStorage.setItem(STORAGE_KEY + '_analyses', JSON.stringify(analyses));
-      localStorage.setItem(STORAGE_KEY + '_products', JSON.stringify(products));
-      localStorage.setItem(STORAGE_KEY + '_prompts', JSON.stringify(prompts));
-      localStorage.setItem(STORAGE_KEY + '_angles', JSON.stringify(cameraAngles));
-      localStorage.setItem(STORAGE_KEY + '_cref', JSON.stringify(creativeReferences));
-      localStorage.setItem(STORAGE_KEY + '_gallery', JSON.stringify(galleryReferences));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
+      localStorage.removeItem(STORAGE_KEY + '_brands');
+      localStorage.removeItem(STORAGE_KEY + '_directions');
+      localStorage.removeItem(STORAGE_KEY + '_analyses');
+      localStorage.removeItem(STORAGE_KEY + '_products');
+      localStorage.removeItem(STORAGE_KEY + '_prompts');
+      localStorage.removeItem(STORAGE_KEY + '_angles');
+      localStorage.removeItem(STORAGE_KEY + '_cref');
+      localStorage.removeItem(STORAGE_KEY + '_gallery');
+    } catch {
+      // ignore
     }
-  }, [brands, directions, analyses, products, prompts, cameraAngles, creativeReferences, galleryReferences]);
+  }, []);
 
   // Search & Modals
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,6 +257,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
   const [isSupabaseSyncing, setIsSupabaseSyncing] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<{ connected: boolean; message: string; tableExists: boolean } | null>(null);
+  const [supabaseBrandIds, setSupabaseBrandIds] = useState<Set<string>>(new Set());
+  const [isSyncingBrandId, setIsSyncingBrandId] = useState<string | null>(null);
+
+  // Helper to check if brand is confirmed saved in Supabase
+  const isBrandSavedInSupabase = (id: string): boolean => {
+    return supabaseBrandIds.has(id);
+  };
 
   // Health check and sync
   const checkSupabaseHealth = async () => {
@@ -348,55 +285,46 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const remoteBrands = await fetchBrandsFromSupabase();
       if (remoteBrands && remoteBrands.length > 0) {
-        setBrands((prev) => {
-          const map = new Map<string, Brand>(prev.map((b) => [b.id, b]));
-          remoteBrands.forEach((rb) => {
-            const existing = map.get(rb.id);
-            if (existing) {
-              map.set(rb.id, {
-                ...existing,
-                name: rb.name,
-                coverImage: rb.image_url || existing.coverImage,
-                createdAt: rb.created_at || existing.createdAt,
-              });
-            } else {
-              map.set(rb.id, {
-                id: rb.id,
-                name: rb.name,
-                category: 'Luxury Brand',
-                founded: new Date(rb.created_at).getFullYear().toString() || '2026',
-                personality: 'Refined, Contemporary',
-                visualStyle: 'Modern Editorial',
-                description: `Brand synced from Supabase (${rb.name})`,
-                coverImage: rb.image_url || 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=900&auto=format&fit=crop&q=80',
-                brandColors: ['#7C3AED', '#0A0A0A', '#FFFFFF'],
-                brandCore: {
-                  personality: 'Sophisticated & High-End',
-                  positioning: 'Premium Visual Identity',
-                  generalVisualIdentity: 'Clean, intentional typography and spacious layouts.',
-                  generalColors: 'Deep obsidian neutrals with subtle atmospheric violet accents.',
-                  typography: 'Poppins & Display Type',
-                  materials: 'Polished glass, matte tactile textures.',
-                  generalPhotographyPrinciples: 'Directional lighting with deliberate shadow gradients.',
-                  thingsToAvoid: 'Cluttered composition and noisy backgrounds.',
-                  notes: 'Imported from Supabase brands table.',
-                },
-                createdAt: rb.created_at || new Date().toISOString(),
-              });
-            }
-          });
-          return Array.from(map.values());
+        const remoteIds = new Set(remoteBrands.map((rb) => rb.id));
+        setSupabaseBrandIds(remoteIds);
+
+        const loadedBrands: Brand[] = remoteBrands.map((rb) => ({
+          id: rb.id,
+          name: rb.name,
+          category: 'Brand',
+          founded: rb.created_at ? new Date(rb.created_at).getFullYear().toString() : '2026',
+          personality: 'Refined • Premium',
+          visualStyle: 'Modern Editorial',
+          description: `Brand synced from Supabase (${rb.name})`,
+          coverImage: rb.image_url || '',
+          brandColors: ['#7C3AED', '#0A0A0A', '#FFFFFF'],
+          brandCore: {
+            personality: '',
+            positioning: '',
+            generalVisualIdentity: '',
+            generalColors: '',
+            typography: '',
+            materials: '',
+            generalPhotographyPrinciples: '',
+            thingsToAvoid: '',
+            notes: '',
+          },
+          createdAt: rb.created_at || new Date().toISOString(),
+          isSavedInSupabase: true,
+          lastSyncedAt: new Date().toISOString(),
+        }));
+
+        setBrands(loadedBrands);
+
+        // Automatically switch activeBrandId to a verified Supabase brand
+        setActiveBrandId((curr) => {
+          if (curr && remoteIds.has(curr)) return curr;
+          return loadedBrands[0].id;
         });
-      } else if (remoteBrands && remoteBrands.length === 0 && brands.length > 0) {
-        // Seed initial brands into the empty Supabase table
-        for (const b of brands) {
-          await insertBrandToSupabase({
-            id: b.id,
-            name: b.name,
-            image_url: b.coverImage || '',
-            created_at: b.createdAt,
-          });
-        }
+      } else if (remoteBrands && remoteBrands.length === 0) {
+        setSupabaseBrandIds(new Set());
+        setBrands([]);
+        setActiveBrandId('');
       }
     } catch (err) {
       console.error('Failed to sync with Supabase:', err);
@@ -409,6 +337,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!isSupabaseConfigured) return { success: 0, failed: 0 };
     let success = 0;
     let failed = 0;
+    const newSyncedIds = new Set(supabaseBrandIds);
     for (const b of brands) {
       const res = await insertBrandToSupabase({
         id: b.id,
@@ -416,10 +345,53 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         image_url: b.coverImage || '',
         created_at: b.createdAt,
       });
-      if (res) success++;
-      else failed++;
+      if (res) {
+        success++;
+        newSyncedIds.add(b.id);
+      } else {
+        failed++;
+      }
     }
+    setSupabaseBrandIds(newSyncedIds);
+    setBrands((prev) =>
+      prev.map((b) =>
+        newSyncedIds.has(b.id)
+          ? { ...b, isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() }
+          : b
+      )
+    );
     return { success, failed };
+  };
+
+  const syncBrandToSupabase = async (id: string): Promise<boolean> => {
+    const brand = brands.find((b) => b.id === id);
+    if (!brand || !isSupabaseConfigured) return false;
+    setIsSyncingBrandId(id);
+    try {
+      const res = await insertBrandToSupabase({
+        id: brand.id,
+        name: brand.name,
+        image_url: brand.coverImage || '',
+        created_at: brand.createdAt || new Date().toISOString(),
+      });
+      if (res) {
+        setSupabaseBrandIds((prev) => new Set([...prev, id]));
+        setBrands((prev) =>
+          prev.map((b) =>
+            b.id === id
+              ? { ...b, isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() }
+              : b
+          )
+        );
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.error('Failed to sync brand to Supabase:', err);
+      return false;
+    } finally {
+      setIsSyncingBrandId(null);
+    }
   };
 
   // Sync on startup if configured
@@ -441,48 +413,95 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Active Brand Helper
   const activeBrand = brands.find((b) => b.id === activeBrandId) || brands[0];
 
-  // Brand CRUD
-  const addBrand = (brandData: Omit<Brand, 'id' | 'createdAt'>): Brand => {
-    const newBrand: Brand = {
-      ...brandData,
-      id: 'brand-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
-    setBrands((prev) => [newBrand, ...prev]);
-    setActiveBrandId(newBrand.id);
+  // Brand CRUD - Direct Supabase Operations with Local Fallback/Optimistic Update
+  const addBrand = async (brandData: Omit<Brand, 'id' | 'createdAt'>): Promise<Brand> => {
+    const newId = 'brand-' + Date.now();
+    let savedInSupabase = false;
 
     if (isSupabaseConfigured) {
-      insertBrandToSupabase({
-        id: newBrand.id,
-        name: newBrand.name,
-        image_url: newBrand.coverImage || '',
-        created_at: newBrand.createdAt,
-      }).catch((e) => console.warn('Supabase brand insert error:', e));
+      try {
+        const res = await insertBrandToSupabase({
+          id: newId,
+          name: brandData.name,
+          image_url: brandData.coverImage || '',
+          created_at: new Date().toISOString(),
+        });
+        if (res) {
+          savedInSupabase = true;
+          setSupabaseBrandIds((prev) => new Set([...prev, newId]));
+        }
+      } catch (e) {
+        console.warn('Supabase brand insert error:', e);
+      }
     }
+
+    const newBrand: Brand = {
+      ...brandData,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      isSavedInSupabase: savedInSupabase,
+      lastSyncedAt: savedInSupabase ? new Date().toISOString() : undefined,
+    };
+
+    setBrands((prev) => [newBrand, ...prev]);
+    setActiveBrandId(newBrand.id);
 
     return newBrand;
   };
 
-  const updateBrand = (id: string, updates: Partial<Brand>) => {
-    setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+  const updateBrand = async (id: string, updates: Partial<Brand>): Promise<void> => {
+    let synced = false;
     if (isSupabaseConfigured) {
-      updateBrandInSupabase(id, {
-        name: updates.name,
-        image_url: updates.coverImage,
-      }).catch((e) => console.warn('Supabase brand update error:', e));
+      try {
+        const res = await updateBrandInSupabase(id, {
+          name: updates.name,
+          image_url: updates.coverImage,
+        });
+        if (res) {
+          synced = true;
+          setSupabaseBrandIds((prev) => new Set([...prev, id]));
+        }
+      } catch (e) {
+        console.warn('Supabase brand update error:', e);
+      }
     }
+
+    setBrands((prev) =>
+      prev.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              ...updates,
+              ...(synced ? { isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() } : {}),
+            }
+          : b
+      )
+    );
   };
 
-  const deleteBrand = (id: string) => {
+  const deleteBrand = async (id: string): Promise<void> => {
+    if (isSupabaseConfigured) {
+      try {
+        await deleteBrandFromSupabase(id);
+      } catch (e) {
+        console.warn('Supabase brand delete error:', e);
+      }
+    }
+
+    setSupabaseBrandIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
     setBrands((prev) => prev.filter((b) => b.id !== id));
     if (activeBrandId === id) {
       const remaining = brands.filter((b) => b.id !== id);
       if (remaining.length > 0) {
         setActiveBrandId(remaining[0].id);
+      } else {
+        setActiveBrandId('');
       }
-    }
-    if (isSupabaseConfigured) {
-      deleteBrandFromSupabase(id).catch((e) => console.warn('Supabase brand delete error:', e));
     }
   };
 
@@ -713,17 +732,17 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Reset to Demo Data
+  // Reset
   const resetToDemoData = () => {
-    setBrands(INITIAL_BRANDS);
-    setDirections(INITIAL_DIRECTIONS);
-    setAnalyses(INITIAL_ANALYSES);
-    setProducts(INITIAL_PRODUCTS);
-    setPrompts(INITIAL_PROMPTS);
+    setBrands([]);
+    setDirections([]);
+    setAnalyses([]);
+    setProducts([]);
+    setPrompts([]);
     setCameraAngles(INITIAL_CAMERA_ANGLES);
     setCreativeReferences(INITIAL_CREATIVE_REFERENCES);
-    setGalleryReferences(INITIAL_GALLERY_REFERENCES as unknown as ReferenceImageItem[]);
-    setActiveBrandId('mabelle');
+    setGalleryReferences([]);
+    setActiveBrandId('');
   };
 
   const t = translations[lang];
@@ -847,6 +866,10 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isSupabaseConfigured,
         isSupabaseSyncing,
         supabaseStatus,
+        supabaseBrandIds,
+        isBrandSavedInSupabase,
+        syncBrandToSupabase,
+        isSyncingBrandId,
         syncWithSupabase,
         pushBrandsToSupabase,
         checkSupabaseHealth,
