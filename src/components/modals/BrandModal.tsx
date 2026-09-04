@@ -41,6 +41,7 @@ export const BrandModal: React.FC = () => {
   const [copiedSql, setCopiedSql] = useState(false);
   const [colors, setColors] = useState<string[]>(['#4B1E3F', '#7A4B6B', '#14121d']);
   const [newColor, setNewColor] = useState('#A855F7');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (editingBrand) {
@@ -137,8 +138,6 @@ CREATE POLICY "Allow public update brand-images" ON storage.objects FOR UPDATE U
       console.error(e);
     }
   };
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
