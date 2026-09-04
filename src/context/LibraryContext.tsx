@@ -22,6 +22,14 @@ import {
   INITIAL_GALLERY_REFERENCES,
 } from '../data/initialData';
 import { Language, translations } from '../i18n/translations';
+import {
+  isSupabaseConfigured,
+  fetchBrandsFromSupabase,
+  insertBrandToSupabase,
+  updateBrandInSupabase,
+  deleteBrandFromSupabase,
+  testSupabaseConnection,
+} from '../lib/supabase';
 
 interface LibraryContextType {
   // Language & Theme
@@ -141,6 +149,16 @@ interface LibraryContextType {
   exportLibraryJSON: () => void;
   importLibraryJSON: (jsonString: string) => boolean;
   resetToDemoData: () => void;
+
+  // Supabase Integration
+  isSupabaseModalOpen: boolean;
+  setIsSupabaseModalOpen: (open: boolean) => void;
+  isSupabaseConfigured: boolean;
+  isSupabaseSyncing: boolean;
+  supabaseStatus: { connected: boolean; message: string; tableExists: boolean } | null;
+  syncWithSupabase: () => Promise<void>;
+  pushBrandsToSupabase: () => Promise<{ success: number; failed: number }>;
+  checkSupabaseHealth: () => Promise<{ connected: boolean; message: string; tableExists: boolean }>;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -294,6 +312,110 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isAddCreativeRefModalOpen, setIsAddCreativeRefModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
+  const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
+  const [isSupabaseSyncing, setIsSupabaseSyncing] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<{ connected: boolean; message: string; tableExists: boolean } | null>(null);
+
+  // Health check and sync
+  const checkSupabaseHealth = async () => {
+    const status = await testSupabaseConnection();
+    setSupabaseStatus(status);
+    return status;
+  };
+
+  const syncWithSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    setIsSupabaseSyncing(true);
+    try {
+      const status = await testSupabaseConnection();
+      setSupabaseStatus(status);
+      if (!status.connected || !status.tableExists) {
+        setIsSupabaseSyncing(false);
+        return;
+      }
+
+      const remoteBrands = await fetchBrandsFromSupabase();
+      if (remoteBrands && remoteBrands.length > 0) {
+        setBrands((prev) => {
+          const map = new Map<string, Brand>(prev.map((b) => [b.id, b]));
+          remoteBrands.forEach((rb) => {
+            const existing = map.get(rb.id);
+            if (existing) {
+              map.set(rb.id, {
+                ...existing,
+                name: rb.name,
+                coverImage: rb.image_url || existing.coverImage,
+                createdAt: rb.created_at || existing.createdAt,
+              });
+            } else {
+              map.set(rb.id, {
+                id: rb.id,
+                name: rb.name,
+                category: 'Luxury Brand',
+                founded: new Date(rb.created_at).getFullYear().toString() || '2026',
+                personality: 'Refined, Contemporary',
+                visualStyle: 'Modern Editorial',
+                description: `Brand synced from Supabase (${rb.name})`,
+                coverImage: rb.image_url || 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=900&auto=format&fit=crop&q=80',
+                brandColors: ['#7C3AED', '#0A0A0A', '#FFFFFF'],
+                brandCore: {
+                  personality: 'Sophisticated & High-End',
+                  positioning: 'Premium Visual Identity',
+                  generalVisualIdentity: 'Clean, intentional typography and spacious layouts.',
+                  generalColors: 'Deep obsidian neutrals with subtle atmospheric violet accents.',
+                  typography: 'Poppins & Display Type',
+                  materials: 'Polished glass, matte tactile textures.',
+                  generalPhotographyPrinciples: 'Directional lighting with deliberate shadow gradients.',
+                  thingsToAvoid: 'Cluttered composition and noisy backgrounds.',
+                  notes: 'Imported from Supabase brands table.',
+                },
+                createdAt: rb.created_at || new Date().toISOString(),
+              });
+            }
+          });
+          return Array.from(map.values());
+        });
+      } else if (remoteBrands && remoteBrands.length === 0 && brands.length > 0) {
+        // Seed initial brands into the empty Supabase table
+        for (const b of brands) {
+          await insertBrandToSupabase({
+            id: b.id,
+            name: b.name,
+            image_url: b.coverImage || '',
+            created_at: b.createdAt,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync with Supabase:', err);
+    } finally {
+      setIsSupabaseSyncing(false);
+    }
+  };
+
+  const pushBrandsToSupabase = async (): Promise<{ success: number; failed: number }> => {
+    if (!isSupabaseConfigured) return { success: 0, failed: 0 };
+    let success = 0;
+    let failed = 0;
+    for (const b of brands) {
+      const res = await insertBrandToSupabase({
+        id: b.id,
+        name: b.name,
+        image_url: b.coverImage || '',
+        created_at: b.createdAt,
+      });
+      if (res) success++;
+      else failed++;
+    }
+    return { success, failed };
+  };
+
+  // Sync on startup if configured
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      syncWithSupabase();
+    }
+  }, []);
 
   // Edit states
   const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
@@ -316,11 +438,27 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     setBrands((prev) => [newBrand, ...prev]);
     setActiveBrandId(newBrand.id);
+
+    if (isSupabaseConfigured) {
+      insertBrandToSupabase({
+        id: newBrand.id,
+        name: newBrand.name,
+        image_url: newBrand.coverImage || '',
+        created_at: newBrand.createdAt,
+      }).catch((e) => console.warn('Supabase brand insert error:', e));
+    }
+
     return newBrand;
   };
 
   const updateBrand = (id: string, updates: Partial<Brand>) => {
     setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    if (isSupabaseConfigured) {
+      updateBrandInSupabase(id, {
+        name: updates.name,
+        image_url: updates.coverImage,
+      }).catch((e) => console.warn('Supabase brand update error:', e));
+    }
   };
 
   const deleteBrand = (id: string) => {
@@ -330,6 +468,9 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (remaining.length > 0) {
         setActiveBrandId(remaining[0].id);
       }
+    }
+    if (isSupabaseConfigured) {
+      deleteBrandFromSupabase(id).catch((e) => console.warn('Supabase brand delete error:', e));
     }
   };
 
@@ -687,6 +828,16 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         exportLibraryJSON,
         importLibraryJSON,
         resetToDemoData,
+
+        // Supabase
+        isSupabaseModalOpen,
+        setIsSupabaseModalOpen,
+        isSupabaseConfigured,
+        isSupabaseSyncing,
+        supabaseStatus,
+        syncWithSupabase,
+        pushBrandsToSupabase,
+        checkSupabaseHealth,
       }}
     >
       {children}

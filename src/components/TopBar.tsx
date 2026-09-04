@@ -14,6 +14,7 @@ import {
   Package,
   Lightbulb,
   FileUp,
+  Database,
 } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 
@@ -34,6 +35,9 @@ export const TopBar: React.FC = () => {
     brands,
     activeBrandId,
     setActiveBrandId,
+    setIsSupabaseModalOpen,
+    isSupabaseConfigured,
+    supabaseStatus,
   } = useLibrary();
 
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
@@ -136,7 +140,36 @@ export const TopBar: React.FC = () => {
       </div>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Supabase Cloud Sync Status Pill */}
+        <button
+          onClick={() => setIsSupabaseModalOpen(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111111] hover:bg-[#161616] border border-[#1F1F1F] hover:border-emerald-500/40 text-xs text-[#A1A1AA] hover:text-white transition-all cursor-pointer group"
+          title="Supabase PostgreSQL Sync"
+        >
+          <div className="flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline font-mono text-[11px]">Supabase</span>
+          </div>
+
+          <div className="flex items-center">
+            {isSupabaseConfigured ? (
+              supabaseStatus?.tableExists ? (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+              ) : (
+                <span className="relative flex h-2 w-2">
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+              )
+            ) : (
+              <span className="inline-flex rounded-full h-2 w-2 bg-[#52525B]"></span>
+            )}
+          </div>
+        </button>
+
         {/* Theme Toggle */}
         <button
           onClick={toggleTheme}

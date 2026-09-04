@@ -27,6 +27,7 @@ import { PromptModal } from './components/modals/PromptModal';
 import { CameraAngleModal } from './components/modals/CameraAngleModal';
 import { ProductModal } from './components/modals/ProductModal';
 import { CreativeRefModal } from './components/modals/CreativeRefModal';
+import { SupabaseModal } from './components/modals/SupabaseModal';
 
 const MainLayout: React.FC = () => {
   const { activeNav, brandSubTab } = useLibrary();
@@ -98,6 +99,7 @@ const MainLayout: React.FC = () => {
       <CameraAngleModal />
       <ProductModal />
       <CreativeRefModal />
+      <SupabaseModal />
     </div>
   );
 };

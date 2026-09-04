@@ -66,15 +66,39 @@ export const BrandsOverviewView: React.FC = () => {
               onClick={() => handleSelectBrand(brand.id)}
               className="rounded-2xl bg-[#12111a] border border-white/5 hover:border-purple-500/40 p-5 flex flex-col justify-between transition-all cursor-pointer group hover:shadow-[0_0_24px_rgba(168,85,247,0.25)] relative overflow-hidden"
             >
+              {/* Cover Image banner from Supabase Storage */}
+              {brand.coverImage && (
+                <div className="-mx-5 -mt-5 mb-4 h-28 relative overflow-hidden border-b border-white/5">
+                  <img
+                    src={brand.coverImage}
+                    alt={brand.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#12111a] via-[#12111a]/40 to-transparent" />
+                  <span className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-[9px] font-mono text-emerald-300 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    brand-images
+                  </span>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {/* Brand header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3.5">
                     {/* Stylized Logo box */}
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2a1334] via-[#1e1329] to-[#0d0a14] border border-purple-400/30 flex flex-col items-center justify-center p-1.5 flex-shrink-0 shadow-[0_0_15px_rgba(147,51,234,0.25)] group-hover:border-purple-400/60 transition-colors">
-                      <span className="text-2xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-purple-200 to-purple-400 font-bold">
-                        {brand.logoText || brand.name.charAt(0)}
-                      </span>
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2a1334] via-[#1e1329] to-[#0d0a14] border border-purple-400/30 flex flex-col items-center justify-center p-1 flex-shrink-0 shadow-[0_0_15px_rgba(147,51,234,0.25)] group-hover:border-purple-400/60 transition-colors overflow-hidden">
+                      {brand.coverImage ? (
+                        <img
+                          src={brand.coverImage}
+                          alt={brand.name}
+                          className="w-full h-full object-cover rounded-xl"
+                        />
+                      ) : (
+                        <span className="text-2xl font-serif text-transparent bg-clip-text bg-gradient-to-b from-purple-200 to-purple-400 font-bold">
+                          {brand.logoText || brand.name.charAt(0)}
+                        </span>
+                      )}
                     </div>
 
                     <div>

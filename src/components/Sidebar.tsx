@@ -14,6 +14,7 @@ import {
   HardDriveDownload,
   ChevronRight,
   Plus,
+  Database,
 } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 import { ActiveNavSection } from '../types';
@@ -28,6 +29,9 @@ export const Sidebar: React.FC = () => {
     brands,
     setIsAddBrandModalOpen,
     setIsBackupModalOpen,
+    setIsSupabaseModalOpen,
+    isSupabaseConfigured,
+    supabaseStatus,
   } = useLibrary();
 
   const mainNavItems: { id: ActiveNavSection; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -252,6 +256,29 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Supabase Cloud Connection Button */}
+        <button
+          onClick={() => setIsSupabaseModalOpen(true)}
+          className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#111111] hover:bg-[#161616] border border-[#1F1F1F] hover:border-emerald-500/40 text-xs text-[#A1A1AA] hover:text-white transition-all cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <Database className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
+            <span className="font-semibold text-white text-[11px]">{t.supabaseDatabase || 'Supabase Database'}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-mono text-[#52525B]">brands</span>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isSupabaseConfigured
+                  ? supabaseStatus?.tableExists
+                    ? 'bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]'
+                    : 'bg-amber-500'
+                  : 'bg-[#52525B]'
+              }`}
+            />
+          </div>
+        </button>
 
         {/* Vault Card */}
         <div className="p-3 rounded-xl bg-[#111111] border border-[#1F1F1F] relative overflow-hidden group hover:border-violet-500/40 transition-colors">

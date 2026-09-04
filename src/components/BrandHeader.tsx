@@ -29,20 +29,53 @@ export const BrandHeader: React.FC = () => {
     <div className="space-y-4">
       {/* Brand Profile Banner Card */}
       <div className="p-6 rounded-2xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-xl relative overflow-hidden">
-        {/* Subtle violet atmospheric ambient glow */}
-        <div className="absolute -top-24 -right-24 w-72 h-72 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+        {/* Subtle violet atmospheric ambient glow or cover backdrop */}
+        {activeBrand.coverImage ? (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-15">
+            <img
+              src={activeBrand.coverImage}
+              alt=""
+              className="w-full h-full object-cover blur-2xl scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-[#0A0A0A]/80 to-transparent" />
+          </div>
+        ) : (
+          <div className="absolute -top-24 -right-24 w-72 h-72 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
+        )}
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           {/* Left: Logo + Info */}
           <div className="flex items-start sm:items-center gap-5">
             {/* Brand Logo Box */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#111111] border border-[#1F1F1F] flex flex-col items-center justify-center p-2 flex-shrink-0 shadow-[0_0_20px_rgba(124,58,237,0.15)] group">
-              <span className="text-2xl sm:text-3xl font-serif text-white font-bold tracking-tight">
-                {activeBrand.logoText || activeBrand.name.charAt(0)}
-              </span>
-              <span className="text-[8px] tracking-widest text-violet-400 font-bold mt-0.5 uppercase text-center truncate w-full">
-                {activeBrand.name.split(' ')[0]}
-              </span>
+            <div
+              onClick={() => {
+                setEditingBrand(activeBrand);
+                setIsAddBrandModalOpen(true);
+              }}
+              title="Click to edit brand or upload image"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#111111] border border-[#1F1F1F] hover:border-violet-500/50 flex flex-col items-center justify-center p-1 flex-shrink-0 shadow-[0_0_20px_rgba(124,58,237,0.15)] group relative overflow-hidden cursor-pointer transition-all"
+            >
+              {activeBrand.coverImage ? (
+                <>
+                  <img
+                    src={activeBrand.coverImage}
+                    alt={activeBrand.name}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-xl">
+                    <Edit2 className="w-4 h-4 text-white" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-2xl sm:text-3xl font-serif text-white font-bold tracking-tight">
+                    {activeBrand.logoText || activeBrand.name.charAt(0)}
+                  </span>
+                  <span className="text-[8px] tracking-widest text-violet-400 font-bold mt-0.5 uppercase text-center truncate w-full px-1">
+                    {activeBrand.name.split(' ')[0]}
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Title, Edit & Description */}
