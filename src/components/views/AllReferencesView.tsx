@@ -6,6 +6,7 @@ import {
   Trash2,
   Filter } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { ImageUploadField } from '../ImageUploadField';
 
 export const AllReferencesView: React.FC = () => {
   const {
@@ -74,23 +75,18 @@ export const AllReferencesView: React.FC = () => {
           className="p-4 rounded-2xl bg-[#14121f] border border-purple-500/30 space-y-3 animate-in fade-in"
         >
           <h3 className="text-xs font-bold text-white">Add New Reference Image</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              type="url"
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              placeholder="Image URL (https://...)"
-              required
-              className="px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500/60"
-            />
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Title / Description (optional)"
-              className="px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500/60"
-            />
-          </div>
+          <ImageUploadField
+            value={newUrl}
+            onChange={setNewUrl}
+            folder="gallery-references"
+          />
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Title / Description (optional)"
+            className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-purple-500/60"
+          />
           <div className="flex justify-end gap-2">
             <button
               type="button"

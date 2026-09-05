@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Lightbulb } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { ImageUploadField } from '../ImageUploadField';
 
 export const CreativeRefModal: React.FC = () => {
   const {
@@ -109,24 +110,14 @@ export const CreativeRefModal: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="text-neutral-300 font-semibold block mb-1">
-              Image URL *
-            </label>
-            <input
-              type="url"
-              required
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/60"
-            />
-            {image && (
-              <div className="mt-2 aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/10">
-                <img src={image} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
+          <ImageUploadField
+            label="Image"
+            required
+            value={image}
+            onChange={setImage}
+            folder="creative-refs"
+            idHint={editingCreativeRef?.id}
+          />
 
           <div>
             <label className="text-neutral-300 font-semibold block mb-1">

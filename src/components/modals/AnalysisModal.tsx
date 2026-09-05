@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, FileText } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { MultiImageUploadInput } from '../ImageUploadField';
 
 export const AnalysisModal: React.FC = () => {
   const {
@@ -315,16 +316,14 @@ export const AnalysisModal: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="text-neutral-400 block mb-1">References (Image URLs, comma separated)</label>
-            <input
-              type="text"
-              value={referenceUrl}
-              onChange={(e) => setReferenceUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/60"
-            />
-          </div>
+          <MultiImageUploadInput
+            label="References (Image URLs, comma separated, or upload)"
+            value={referenceUrl}
+            onChange={setReferenceUrl}
+            folder="analysis-references"
+            idHint={editingAnalysis?.id}
+            placeholder="https://images.unsplash.com/..."
+          />
 
           <div className="pt-4 border-t border-white/10 flex justify-end gap-2">
             <button

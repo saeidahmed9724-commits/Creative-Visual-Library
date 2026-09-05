@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { parseChatGPTAnalysis, ParsedAnalysisFields } from '../../utils/parser';
+import { MultiImageUploadInput } from '../ImageUploadField';
 
 export const ImportAnalysisModal: React.FC = () => {
   const {
@@ -52,11 +53,23 @@ export const ImportAnalysisModal: React.FC = () => {
   // Available directions for selected brand
   const brandDirections = directions.filter((d) => d.brandId === targetBrandId);
 
+  // Keep the target brand in sync with whichever brand is currently active
+  // whenever the modal is (re)opened — previously this only ran once on mount,
+  // so it could get stuck pointing at a stale/empty brand and the direction
+  // dropdown below it would appear empty even though directions existed.
+  useEffect(() => {
+    if (isImportModalOpen) {
+      setTargetBrandId(activeBrandId || brands[0]?.id || '');
+    }
+  }, [isImportModalOpen, activeBrandId, brands]);
+
   useEffect(() => {
     if (selectedDirectionId) {
       setTargetDirId(selectedDirectionId);
     } else if (brandDirections.length > 0) {
       setTargetDirId(brandDirections[0].id);
+    } else {
+      setTargetDirId('');
     }
   }, [targetBrandId, selectedDirectionId, brandDirections.length]);
 
@@ -402,15 +415,12 @@ Flat flash, frizzy stray hair, over saturated neon tones, cluttered props`);
 
               {/* Reference image URLs */}
               <div className="pt-2">
-                <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                  {t.uploadImages}
-                </label>
-                <input
-                  type="text"
+                <MultiImageUploadInput
+                  label={t.uploadImages}
                   value={referenceUrls}
-                  onChange={(e) => setReferenceUrls(e.target.value)}
+                  onChange={setReferenceUrls}
+                  folder="analysis-references"
                   placeholder="https://images.unsplash.com/..., https://..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500/60"
                 />
               </div>
             </div>

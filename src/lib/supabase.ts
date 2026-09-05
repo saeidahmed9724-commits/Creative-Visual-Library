@@ -510,6 +510,88 @@ export async function testSupabaseStorageBucket(): Promise<{
 }
 
 /**
+ * Generic image uploader used by any "accepts an image URL" field across the app
+ * (visual directions, products, creative references, gallery references, analysis
+ * reference shots, etc). Uploads into the shared 'brand-images' bucket under a
+ * folder named after the entity type, and returns the public URL.
+ */
+export async function uploadGenericImageToStorage(
+  file: File | Blob,
+  folder: string,
+  idHint?: string
+): Promise<StorageUploadResult> {
+  if (!isSupabaseConfigured || !supabase) {
+    return {
+      publicUrl: null,
+      path: null,
+      error: 'Supabase is not configured',
+      isRlsPolicyError: false,
+    };
+  }
+
+  try {
+    const originalName = (file instanceof File ? file.name : undefined) || 'image.jpg';
+    const rawExt = originalName.split('.').pop() || '';
+    const safeExt = (rawExt || (file.type ? file.type.split('/')[1] : 'jpg'))
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .toLowerCase()
+      .slice(0, 5) || 'jpg';
+
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const safeFolder = (folder || 'misc').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanIdHint = (idHint || 'item').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filePath = `${safeFolder}/${cleanIdHint}_${timestamp}_${randomSuffix}.${safeExt}`;
+
+    const contentType = file.type || (safeExt === 'png' ? 'image/png' : safeExt === 'webp' ? 'image/webp' : 'image/jpeg');
+
+    const { data, error } = await supabase.storage
+      .from(SUPABASE_BRAND_IMAGES_BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType,
+      });
+
+    if (error) {
+      console.warn('Supabase storage upload error:', error);
+      const isRls =
+        error.message?.toLowerCase().includes('violates row-level security') ||
+        error.message?.toLowerCase().includes('security policy') ||
+        (error as any).statusCode === '403' ||
+        (error as any).status === 400 ||
+        (error as any).code === 'AccessDenied';
+
+      return {
+        publicUrl: null,
+        path: null,
+        error: error.message,
+        isRlsPolicyError: isRls,
+      };
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(SUPABASE_BRAND_IMAGES_BUCKET)
+      .getPublicUrl(data.path);
+
+    return {
+      publicUrl: urlData.publicUrl,
+      path: data.path,
+      error: null,
+      isRlsPolicyError: false,
+    };
+  } catch (err: any) {
+    console.error('Storage upload exception:', err);
+    return {
+      publicUrl: null,
+      path: null,
+      error: err?.message || 'Failed to upload image',
+      isRlsPolicyError: false,
+    };
+  }
+}
+
+/**
  * Upload a prompt output image to Supabase Storage (tries 'prompt-images' bucket, falls back to 'brand-images/prompts/').
  * Returns the public URL to be saved in the Prompt item.
  */

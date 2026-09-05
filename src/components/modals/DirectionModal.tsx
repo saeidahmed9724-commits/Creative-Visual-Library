@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Compass } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { ImageUploadField } from '../ImageUploadField';
 
 export const DirectionModal: React.FC = () => {
   const {
@@ -134,23 +135,13 @@ export const DirectionModal: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="text-neutral-300 font-semibold block mb-1">
-              Cover Image URL
-            </label>
-            <input
-              type="url"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/60"
-            />
-            {image && (
-              <div className="mt-2 aspect-video rounded-xl overflow-hidden bg-black/40 border border-white/10">
-                <img src={image} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
+          <ImageUploadField
+            label="Cover Image"
+            value={image}
+            onChange={setImage}
+            folder="directions"
+            idHint={editingDirection?.id}
+          />
 
           <div className="pt-4 border-t border-white/10 flex justify-end gap-2">
             <button

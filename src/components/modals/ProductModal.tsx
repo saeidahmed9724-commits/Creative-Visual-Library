@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Package } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { ImageUploadField } from '../ImageUploadField';
 
 export const ProductModal: React.FC = () => {
   const {
@@ -140,23 +141,14 @@ export const ProductModal: React.FC = () => {
             />
           </div>
 
-          <div>
-            <label className="text-neutral-300 font-semibold block mb-1">
-              Product Image URL
-            </label>
-            <input
-              type="url"
-              value={mainImage}
-              onChange={(e) => setMainImage(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-purple-500/60"
-            />
-            {mainImage && (
-              <div className="mt-2 w-20 h-20 rounded-xl overflow-hidden bg-black/40 border border-white/10">
-                <img src={mainImage} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
+          <ImageUploadField
+            label="Product Image"
+            value={mainImage}
+            onChange={setMainImage}
+            folder="products"
+            idHint={editingProduct?.id}
+            previewAspectClassName="aspect-square w-20 h-20"
+          />
 
           <div>
             <label className="text-neutral-300 font-semibold block mb-1">

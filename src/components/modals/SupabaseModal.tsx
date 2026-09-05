@@ -13,9 +13,11 @@ import {
   AlertTriangle,
   HelpCircle,
   ImageIcon,
+  Save,
+  Undo2,
 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { testSupabaseStorageBucket, SUPABASE_BRAND_IMAGES_BUCKET } from '../../lib/supabase';
+import { testSupabaseStorageBucket, SUPABASE_BRAND_IMAGES_BUCKET, getResolvedSupabaseUrl } from '../../lib/supabase';
 
 export const SupabaseModal: React.FC = () => {
   const {
@@ -42,8 +44,27 @@ export const SupabaseModal: React.FC = () => {
     canUpload: boolean;
     message: string;
   } | null>(null);
+  const [customUrl, setCustomUrl] = useState(() => localStorage.getItem('supabase_custom_url') || '');
+  const [customKey, setCustomKey] = useState(() => localStorage.getItem('supabase_custom_key') || '');
+  const hasCustomCreds = Boolean(
+    localStorage.getItem('supabase_custom_url') || localStorage.getItem('supabase_custom_key')
+  );
 
   if (!isSupabaseModalOpen) return null;
+
+  const handleSaveCustomCreds = () => {
+    if (customUrl.trim()) localStorage.setItem('supabase_custom_url', customUrl.trim());
+    else localStorage.removeItem('supabase_custom_url');
+    if (customKey.trim()) localStorage.setItem('supabase_custom_key', customKey.trim());
+    else localStorage.removeItem('supabase_custom_key');
+    window.location.reload();
+  };
+
+  const handleUseBuiltIn = () => {
+    localStorage.removeItem('supabase_custom_url');
+    localStorage.removeItem('supabase_custom_key');
+    window.location.reload();
+  };
 
   const storageSqlCode = `-- Storage Bucket Policies for '${SUPABASE_BRAND_IMAGES_BUCKET}'
 -- Run this in Supabase Dashboard -> SQL Editor
@@ -272,6 +293,59 @@ ${storageSqlCode}`;
                 >
                   <RefreshCw className={`w-3 h-3 ${isSupabaseSyncing ? 'animate-spin' : ''}`} />
                   <span>{isRTL ? 'مزامنة فورية' : 'Sync Now'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Own Supabase Project — enter your own credentials right here */}
+          <div className="p-4 rounded-xl bg-[#0A0A0A] border border-[#1F1F1F] space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-white">
+                <Server className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isRTL ? 'اربط مشروع Supabase الخاص بك' : 'Connect Your Own Supabase Project'}</span>
+              </div>
+              <span className="text-[10px] font-mono text-[#71717A] truncate max-w-[220px]">
+                {isRTL ? 'الحالي: ' : 'Current: '}{getResolvedSupabaseUrl()}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#A1A1AA] leading-relaxed">
+              {isRTL
+                ? 'من غير الحاجة لأي متغيرات بيئة أو إعادة بناء — الصق رابط ومفتاح مشروعك من Supabase Dashboard -> Project Settings -> API، واحفظ. بيانات المكتبة هتتخزن وقتها في مشروعك الخاص وهتفضل موجودة حتى لو مسحت الكاش.'
+                : "No env vars or rebuild needed — paste your project's URL and anon key from Supabase Dashboard -> Project Settings -> API, then save. Your library will then persist to your own project and survive clearing the browser cache."}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <input
+                type="url"
+                value={customUrl}
+                onChange={(e) => setCustomUrl(e.target.value)}
+                placeholder="https://xxxxxxxx.supabase.co"
+                className="bg-[#111111] border border-[#1F1F1F] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500/60"
+              />
+              <input
+                type="text"
+                value={customKey}
+                onChange={(e) => setCustomKey(e.target.value)}
+                placeholder="anon / publishable key"
+                className="bg-[#111111] border border-[#1F1F1F] rounded-lg px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-emerald-500/60"
+              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={handleSaveCustomCreds}
+                disabled={!customUrl.trim() || !customKey.trim()}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-semibold transition-all cursor-pointer"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{isRTL ? 'حفظ وإعادة التحميل' : 'Save & Reload'}</span>
+              </button>
+              {hasCustomCreds && (
+                <button
+                  onClick={handleUseBuiltIn}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#161616] hover:bg-[#202020] border border-[#2D2D2D] text-xs text-[#A1A1AA] hover:text-white transition-all cursor-pointer"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span>{isRTL ? 'الرجوع للمشروع الافتراضي' : 'Revert to Built-in Project'}</span>
                 </button>
               )}
             </div>

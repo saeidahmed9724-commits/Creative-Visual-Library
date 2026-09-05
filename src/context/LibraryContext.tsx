@@ -543,6 +543,18 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Automatically attempt a Supabase sync once when the app loads, so the
+  // library actually starts persisting to the cloud without requiring the
+  // user to manually open Settings -> Supabase and press "Sync" every
+  // session (previously cloudAvailableRef only ever became true after that
+  // manual click, so auto-save-to-cloud silently never activated).
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      syncWithSupabase();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const pushBrandsToSupabase = async (): Promise<{ success: number; failed: number }> => {
     if (!isSupabaseConfigured) return { success: 0, failed: 0 };
     let success = 0;
