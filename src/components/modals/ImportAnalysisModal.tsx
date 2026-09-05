@@ -4,10 +4,6 @@ import {
   Sparkles,
   ArrowRight,
   Check,
-  Building2,
-  Compass,
-  FileText,
-  Image as ImageIcon,
 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { parseChatGPTAnalysis, ParsedAnalysisFields } from '../../utils/parser';

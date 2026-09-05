@@ -27,6 +27,7 @@ export interface Brand {
   isSavedInSupabase?: boolean;
   lastSyncedAt?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface VisualDirection {
@@ -43,6 +44,7 @@ export interface VisualDirection {
   analysesCount?: number;
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface VisualAnalysis {
@@ -68,6 +70,7 @@ export interface VisualAnalysis {
   references: string[];
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Product {
@@ -81,6 +84,7 @@ export interface Product {
   notes?: string;
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface PromptItem {
@@ -98,6 +102,7 @@ export interface PromptItem {
   notes?: string;
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CameraAngle {
@@ -112,6 +117,7 @@ export interface CameraAngle {
   tags: string[];
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface CreativeReference {
@@ -124,6 +130,7 @@ export interface CreativeReference {
   notes?: string;
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface ReferenceImageItem {
@@ -136,6 +143,7 @@ export interface ReferenceImageItem {
   analysisId?: string;
   starred?: boolean;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export type ActiveNavSection = 
@@ -179,4 +187,40 @@ export interface LibraryState {
   activeBrandId: string;
   activeDirectionId?: string;
   activeAnalysisId?: string;
+}
+
+export type TrashItemType =
+  | 'brand'
+  | 'direction'
+  | 'analysis'
+  | 'product'
+  | 'prompt'
+  | 'cameraAngle'
+  | 'creativeReference'
+  | 'galleryReference';
+
+export interface TrashItem {
+  id: string;
+  type: TrashItemType;
+  title: string;
+  deletedAt: string;
+  payload: unknown;
+  /** Related child records removed together with the item (e.g. analyses of a direction) */
+  children?: { type: TrashItemType; items: unknown[] }[];
+}
+
+export interface LibrarySnapshot {
+  version: string;
+  exportedAt: string;
+  appName: string;
+  brands: Brand[];
+  directions: VisualDirection[];
+  analyses: VisualAnalysis[];
+  products: Product[];
+  prompts: PromptItem[];
+  cameraAngles: CameraAngle[];
+  creativeReferences: CreativeReference[];
+  galleryReferences: ReferenceImageItem[];
+  trash?: TrashItem[];
+  activeBrandId?: string;
 }

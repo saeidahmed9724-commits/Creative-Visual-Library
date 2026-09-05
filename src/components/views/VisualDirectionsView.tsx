@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Compass,
   Plus,
   Sparkles,
   ArrowLeft,
@@ -11,15 +10,9 @@ import {
   Copy,
   Check,
   Image as ImageIcon,
-  Camera,
-  Layers,
-  Palette,
-  SunMedium,
-  Maximize2,
-  FileDown,
-} from 'lucide-react';
+  Maximize2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { VisualDirection, VisualAnalysis } from '../../types';
+import { VisualAnalysis } from '../../types';
 
 export const VisualDirectionsView: React.FC = () => {
   const {
@@ -488,7 +481,7 @@ Things to Avoid: ${ana.avoid}`;
               <div>
                 <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#0A0A0A] mb-3">
                   <img
-                    src={dir.image}
+                    src={dir.image || undefined}
                     alt={dir.name}
                     className="w-full h-full object-cover grayscale contrast-125 group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"

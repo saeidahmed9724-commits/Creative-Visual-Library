@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
-  X,
   Compass,
   FileText,
   Sparkles,
   Camera,
   Package,
   Lightbulb,
-  ArrowRight,
-  Filter,
-} from 'lucide-react';
+  ArrowRight } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 
 type SearchItemType = 'direction' | 'analysis' | 'prompt' | 'angle' | 'product' | 'creativeRef';

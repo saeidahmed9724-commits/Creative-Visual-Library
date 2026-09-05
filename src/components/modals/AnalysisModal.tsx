@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, FileText, Sparkles } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { VisualAnalysis } from '../../types';
 
 export const AnalysisModal: React.FC = () => {
   const {

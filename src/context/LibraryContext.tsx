@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Brand,
   VisualDirection,
@@ -10,17 +10,11 @@ import {
   ActiveNavSection,
   BrandSubTab,
   ReferenceImageItem,
+  TrashItem,
+  TrashItemType,
+  LibrarySnapshot,
 } from '../types';
-import {
-  INITIAL_BRANDS,
-  INITIAL_DIRECTIONS,
-  INITIAL_ANALYSES,
-  INITIAL_PRODUCTS,
-  INITIAL_PROMPTS,
-  INITIAL_CAMERA_ANGLES,
-  INITIAL_CREATIVE_REFERENCES,
-  INITIAL_GALLERY_REFERENCES,
-} from '../data/initialData';
+import { INITIAL_CAMERA_ANGLES, INITIAL_CREATIVE_REFERENCES } from '../data/initialData';
 import { Language, translations } from '../i18n/translations';
 import {
   isSupabaseConfigured,
@@ -29,7 +23,11 @@ import {
   updateBrandInSupabase,
   deleteBrandFromSupabase,
   testSupabaseConnection,
+  fetchLibrarySnapshot,
+  saveLibrarySnapshot,
 } from '../lib/supabase';
+
+export type CloudSyncState = 'idle' | 'syncing' | 'synced' | 'unavailable' | 'error';
 
 interface LibraryContextType {
   // Language & Theme
@@ -39,6 +37,10 @@ interface LibraryContextType {
   isRTL: boolean;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
+
+  // Layout
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
 
   // Navigation State
   activeNav: ActiveNavSection;
@@ -61,6 +63,7 @@ interface LibraryContextType {
   cameraAngles: CameraAngle[];
   creativeReferences: CreativeReference[];
   galleryReferences: ReferenceImageItem[];
+  trash: TrashItem[];
 
   // Active Brand Helper
   activeBrand: Brand | undefined;
@@ -106,6 +109,11 @@ interface LibraryContextType {
 
   addGalleryReference: (ref: Omit<ReferenceImageItem, 'id' | 'createdAt'>) => ReferenceImageItem;
   deleteGalleryReference: (id: string) => void;
+
+  // Trash
+  restoreFromTrash: (trashId: string) => void;
+  purgeTrashItem: (trashId: string) => void;
+  emptyTrash: () => void;
 
   // Universal Search
   searchQuery: string;
@@ -153,6 +161,7 @@ interface LibraryContextType {
   exportLibraryJSON: () => void;
   importLibraryJSON: (jsonString: string) => boolean;
   resetToDemoData: () => void;
+  lastSavedAt: string | null;
 
   // Supabase Integration
   isSupabaseModalOpen: boolean;
@@ -163,13 +172,89 @@ interface LibraryContextType {
   syncWithSupabase: () => Promise<void>;
   pushBrandsToSupabase: () => Promise<{ success: number; failed: number }>;
   checkSupabaseHealth: () => Promise<{ connected: boolean; message: string; tableExists: boolean }>;
+  cloudSyncState: CloudSyncState;
+  pushLibraryToCloud: () => Promise<boolean>;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'cvl_library_data_v1';
+const STORAGE_KEY = 'cvl_library_v2';
+const STORAGE_SAVED_AT_KEY = 'cvl_library_v2_saved_at';
+const LEGACY_STORAGE_KEY = 'cvl_library_data_v1';
 const LANG_STORAGE_KEY = 'cvl_language_pref';
 const THEME_STORAGE_KEY = 'cvl_theme_pref';
+
+const EMPTY_BRAND_CORE: Brand['brandCore'] = {
+  personality: '',
+  positioning: '',
+  generalVisualIdentity: '',
+  generalColors: '',
+  typography: '',
+  materials: '',
+  generalPhotographyPrinciples: '',
+  thingsToAvoid: '',
+  notes: '',
+};
+
+const nowISO = () => new Date().toISOString();
+const uid = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+/* ------------------------------------------------------------------ */
+/*  Local persistence helpers                                          */
+/* ------------------------------------------------------------------ */
+
+interface PersistedLibrary {
+  brands: Brand[];
+  directions: VisualDirection[];
+  analyses: VisualAnalysis[];
+  products: Product[];
+  prompts: PromptItem[];
+  cameraAngles: CameraAngle[];
+  creativeReferences: CreativeReference[];
+  galleryReferences: ReferenceImageItem[];
+  trash: TrashItem[];
+  activeBrandId: string;
+}
+
+const asArray = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
+
+function normalizeSnapshot(raw: any, fallbackSeed = false): PersistedLibrary {
+  const hasCamera = Array.isArray(raw?.cameraAngles);
+  const hasCref = Array.isArray(raw?.creativeReferences);
+  return {
+    brands: asArray<Brand>(raw?.brands).map((b) => ({
+      ...b,
+      brandColors: Array.isArray(b.brandColors) ? b.brandColors : [],
+      brandCore: { ...EMPTY_BRAND_CORE, ...(b.brandCore || {}) },
+    })),
+    directions: asArray<VisualDirection>(raw?.directions),
+    analyses: asArray<VisualAnalysis>(raw?.analyses),
+    products: asArray<Product>(raw?.products),
+    prompts: asArray<PromptItem>(raw?.prompts),
+    cameraAngles: hasCamera ? raw.cameraAngles : fallbackSeed ? INITIAL_CAMERA_ANGLES : [],
+    creativeReferences: hasCref ? raw.creativeReferences : fallbackSeed ? INITIAL_CREATIVE_REFERENCES : [],
+    galleryReferences: asArray<ReferenceImageItem>(raw?.galleryReferences),
+    trash: asArray<TrashItem>(raw?.trash),
+    activeBrandId: typeof raw?.activeBrandId === 'string' ? raw.activeBrandId : '',
+  };
+}
+
+function loadLocalLibrary(): PersistedLibrary {
+  if (typeof window === 'undefined') return normalizeSnapshot(null, true);
+  try {
+    const rawV2 = localStorage.getItem(STORAGE_KEY);
+    if (rawV2) return normalizeSnapshot(JSON.parse(rawV2), true);
+    const rawV1 = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (rawV1) return normalizeSnapshot(JSON.parse(rawV1), true);
+  } catch (err) {
+    console.warn('Failed to read local library, starting fresh:', err);
+  }
+  return normalizeSnapshot(null, true);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Provider                                                           */
+/* ------------------------------------------------------------------ */
 
 export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Language & RTL
@@ -200,46 +285,38 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [lang]);
 
   useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle('light', theme === 'light');
   }, [theme]);
 
+  // Layout
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Navigation State
-  const [activeNav, setActiveNav] = useState<ActiveNavSection>('dashboard');
-  const [activeBrandId, setActiveBrandId] = useState<string>('');
+  const [activeNav, setActiveNavState] = useState<ActiveNavSection>('dashboard');
   const [brandSubTab, setBrandSubTab] = useState<BrandSubTab>('overview');
   const [selectedDirectionId, setSelectedDirectionId] = useState<string | null>(null);
   const [selectedAnalysisId, setSelectedAnalysisId] = useState<string | null>(null);
 
-  // Entities - Zero fake brands. Purely fetched/synced with Supabase.
-  // NO localStorage storage for brands or entities.
-  const [brands, setBrands] = useState<Brand[]>([]);
-  const [directions, setDirections] = useState<VisualDirection[]>([]);
-  const [analyses, setAnalyses] = useState<VisualAnalysis[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [prompts, setPrompts] = useState<PromptItem[]>([]);
-  const [cameraAngles, setCameraAngles] = useState<CameraAngle[]>(INITIAL_CAMERA_ANGLES);
-  const [creativeReferences, setCreativeReferences] = useState<CreativeReference[]>(INITIAL_CREATIVE_REFERENCES);
-  const [galleryReferences, setGalleryReferences] = useState<ReferenceImageItem[]>([]);
-
-  // Purge any legacy localStorage keys to ensure zero fake or cached data remains
-  useEffect(() => {
-    try {
-      localStorage.removeItem(STORAGE_KEY + '_brands');
-      localStorage.removeItem(STORAGE_KEY + '_directions');
-      localStorage.removeItem(STORAGE_KEY + '_analyses');
-      localStorage.removeItem(STORAGE_KEY + '_products');
-      localStorage.removeItem(STORAGE_KEY + '_prompts');
-      localStorage.removeItem(STORAGE_KEY + '_angles');
-      localStorage.removeItem(STORAGE_KEY + '_cref');
-      localStorage.removeItem(STORAGE_KEY + '_gallery');
-    } catch {
-      // ignore
-    }
+  const setActiveNav = useCallback((nav: ActiveNavSection) => {
+    setActiveNavState(nav);
+    setIsSidebarOpen(false);
+    window.scrollTo({ top: 0 });
   }, []);
+
+  // Entities — loaded from local storage (persisted), merged with Supabase when available.
+  const initial = useMemo(loadLocalLibrary, []);
+  const [brands, setBrands] = useState<Brand[]>(initial.brands);
+  const [directions, setDirections] = useState<VisualDirection[]>(initial.directions);
+  const [analyses, setAnalyses] = useState<VisualAnalysis[]>(initial.analyses);
+  const [products, setProducts] = useState<Product[]>(initial.products);
+  const [prompts, setPrompts] = useState<PromptItem[]>(initial.prompts);
+  const [cameraAngles, setCameraAngles] = useState<CameraAngle[]>(initial.cameraAngles);
+  const [creativeReferences, setCreativeReferences] = useState<CreativeReference[]>(initial.creativeReferences);
+  const [galleryReferences, setGalleryReferences] = useState<ReferenceImageItem[]>(initial.galleryReferences);
+  const [trash, setTrash] = useState<TrashItem[]>(initial.trash);
+  const [activeBrandId, setActiveBrandId] = useState<string>(initial.activeBrandId);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(() => localStorage.getItem(STORAGE_SAVED_AT_KEY));
 
   // Search & Modals
   const [searchQuery, setSearchQuery] = useState('');
@@ -259,17 +336,161 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [supabaseStatus, setSupabaseStatus] = useState<{ connected: boolean; message: string; tableExists: boolean } | null>(null);
   const [supabaseBrandIds, setSupabaseBrandIds] = useState<Set<string>>(new Set());
   const [isSyncingBrandId, setIsSyncingBrandId] = useState<string | null>(null);
+  const [cloudSyncState, setCloudSyncState] = useState<CloudSyncState>(isSupabaseConfigured ? 'idle' : 'unavailable');
 
-  // Helper to check if brand is confirmed saved in Supabase
-  const isBrandSavedInSupabase = (id: string): boolean => {
-    return supabaseBrandIds.has(id);
+  // Edit states
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
+  const [editingDirection, setEditingDirection] = useState<VisualDirection | null>(null);
+  const [editingAnalysis, setEditingAnalysis] = useState<VisualAnalysis | null>(null);
+  const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
+  const [editingAngle, setEditingAngle] = useState<CameraAngle | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingCreativeRef, setEditingCreativeRef] = useState<CreativeReference | null>(null);
+
+  /* ---------------------------- snapshot helpers ---------------------------- */
+
+  const buildSnapshot = useCallback((): LibrarySnapshot => ({
+    version: '2.0',
+    exportedAt: nowISO(),
+    appName: 'Creative Visual Library',
+    brands,
+    directions,
+    analyses,
+    products,
+    prompts,
+    cameraAngles,
+    creativeReferences,
+    galleryReferences,
+    trash,
+    activeBrandId,
+  }), [brands, directions, analyses, products, prompts, cameraAngles, creativeReferences, galleryReferences, trash, activeBrandId]);
+
+  const applySnapshot = useCallback((raw: unknown, seed = false) => {
+    const snap = normalizeSnapshot(raw, seed);
+    setBrands(snap.brands);
+    setDirections(snap.directions);
+    setAnalyses(snap.analyses);
+    setProducts(snap.products);
+    setPrompts(snap.prompts);
+    setCameraAngles(snap.cameraAngles);
+    setCreativeReferences(snap.creativeReferences);
+    setGalleryReferences(snap.galleryReferences);
+    setTrash(snap.trash);
+    setActiveBrandId((curr) => {
+      if (curr && snap.brands.some((b) => b.id === curr)) return curr;
+      if (snap.activeBrandId && snap.brands.some((b) => b.id === snap.activeBrandId)) return snap.activeBrandId;
+      return snap.brands[0]?.id || '';
+    });
+  }, []);
+
+  /* --------------------------- local auto-persist --------------------------- */
+
+  const hydratedRef = useRef(false);
+  const brandsRef = useRef<Brand[]>(brands);
+  useEffect(() => {
+    brandsRef.current = brands;
+  }, [brands]);
+  const skipNextCloudPushRef = useRef(false);
+  const cloudTimerRef = useRef<number | null>(null);
+  const cloudAvailableRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      return;
+    }
+    const snapshot = buildSnapshot();
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      localStorage.setItem(STORAGE_SAVED_AT_KEY, snapshot.exportedAt);
+      setLastSavedAt(snapshot.exportedAt);
+    } catch (err) {
+      console.warn('Failed to persist library locally (quota?):', err);
+    }
+
+    // Debounced push to cloud
+    if (skipNextCloudPushRef.current) {
+      skipNextCloudPushRef.current = false;
+      return;
+    }
+    if (!isSupabaseConfigured || !cloudAvailableRef.current) return;
+    if (cloudTimerRef.current) window.clearTimeout(cloudTimerRef.current);
+    cloudTimerRef.current = window.setTimeout(async () => {
+      setCloudSyncState('syncing');
+      const res = await saveLibrarySnapshot(snapshot);
+      if (res.ok) setCloudSyncState('synced');
+      else if (res.missingTable) {
+        cloudAvailableRef.current = false;
+        setCloudSyncState('unavailable');
+      } else setCloudSyncState('error');
+    }, 1500);
+    return () => {
+      if (cloudTimerRef.current) window.clearTimeout(cloudTimerRef.current);
+    };
+  }, [buildSnapshot]);
+
+  const pushLibraryToCloud = async (): Promise<boolean> => {
+    if (!isSupabaseConfigured) return false;
+    setCloudSyncState('syncing');
+    const res = await saveLibrarySnapshot(buildSnapshot());
+    if (res.ok) {
+      cloudAvailableRef.current = true;
+      setCloudSyncState('synced');
+      return true;
+    }
+    setCloudSyncState(res.missingTable ? 'unavailable' : 'error');
+    return false;
   };
 
-  // Health check and sync
+  /* ------------------------------ supabase sync ----------------------------- */
+
+  const isBrandSavedInSupabase = (id: string): boolean => supabaseBrandIds.has(id);
+
   const checkSupabaseHealth = async () => {
     const status = await testSupabaseConnection();
     setSupabaseStatus(status);
     return status;
+  };
+
+  /**
+   * Merge remote brand rows into local brands WITHOUT losing local rich data.
+   * - Remote rows that exist locally: mark as saved, fill missing cover image.
+   * - Remote rows unknown locally: create a brand skeleton.
+   * - Local brands not in remote: kept (marked as local-only).
+   */
+  const mergeRemoteBrands = (local: Brand[], remote: { id: string; name: string; image_url: string | null; created_at: string }[]): Brand[] => {
+    const remoteMap = new Map(remote.map((r) => [r.id, r]));
+    const merged: Brand[] = local.map((b) => {
+      const r = remoteMap.get(b.id);
+      if (!r) return { ...b, isSavedInSupabase: false };
+      return {
+        ...b,
+        name: b.name || r.name,
+        coverImage: b.coverImage || r.image_url || '',
+        isSavedInSupabase: true,
+        lastSyncedAt: nowISO(),
+      };
+    });
+    const localIds = new Set(local.map((b) => b.id));
+    for (const r of remote) {
+      if (localIds.has(r.id)) continue;
+      merged.push({
+        id: r.id,
+        name: r.name,
+        category: 'Brand',
+        founded: r.created_at ? new Date(r.created_at).getFullYear().toString() : new Date().getFullYear().toString(),
+        personality: '',
+        visualStyle: '',
+        description: '',
+        coverImage: r.image_url || '',
+        brandColors: ['#7C3AED', '#0A0A0A', '#FFFFFF'],
+        brandCore: { ...EMPTY_BRAND_CORE },
+        createdAt: r.created_at || nowISO(),
+        isSavedInSupabase: true,
+        lastSyncedAt: nowISO(),
+      });
+    }
+    return merged;
   };
 
   const syncWithSupabase = async () => {
@@ -278,56 +499,45 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const status = await testSupabaseConnection();
       setSupabaseStatus(status);
-      if (!status.connected || !status.tableExists) {
-        setIsSupabaseSyncing(false);
-        return;
+      if (!status.connected) return;
+
+      // 1) Full library snapshot (optional table)
+      let baseBrands: Brand[] = brandsRef.current;
+      const snap = await fetchLibrarySnapshot();
+      if (snap.status === 'ok') {
+        cloudAvailableRef.current = true;
+        const localSavedAt = localStorage.getItem(STORAGE_SAVED_AT_KEY);
+        if (snap.row && snap.row.data && (!localSavedAt || new Date(snap.row.updated_at) > new Date(localSavedAt))) {
+          skipNextCloudPushRef.current = true;
+          applySnapshot(snap.row.data, false);
+          baseBrands = normalizeSnapshot(snap.row.data).brands;
+        } else {
+          // Local is newer or remote empty → push local
+          const res = await saveLibrarySnapshot(buildSnapshot());
+          if (!res.ok && res.missingTable) cloudAvailableRef.current = false;
+        }
+        setCloudSyncState(cloudAvailableRef.current ? 'synced' : 'unavailable');
+      } else if (snap.status === 'missing-table') {
+        cloudAvailableRef.current = false;
+        setCloudSyncState('unavailable');
+      } else {
+        setCloudSyncState('error');
       }
 
-      const remoteBrands = await fetchBrandsFromSupabase();
-      if (remoteBrands && remoteBrands.length > 0) {
-        const remoteIds = new Set(remoteBrands.map((rb) => rb.id));
-        setSupabaseBrandIds(remoteIds);
-
-        const loadedBrands: Brand[] = remoteBrands.map((rb) => ({
-          id: rb.id,
-          name: rb.name,
-          category: 'Brand',
-          founded: rb.created_at ? new Date(rb.created_at).getFullYear().toString() : '2026',
-          personality: 'Refined • Premium',
-          visualStyle: 'Modern Editorial',
-          description: `Brand synced from Supabase (${rb.name})`,
-          coverImage: rb.image_url || '',
-          brandColors: ['#7C3AED', '#0A0A0A', '#FFFFFF'],
-          brandCore: {
-            personality: '',
-            positioning: '',
-            generalVisualIdentity: '',
-            generalColors: '',
-            typography: '',
-            materials: '',
-            generalPhotographyPrinciples: '',
-            thingsToAvoid: '',
-            notes: '',
-          },
-          createdAt: rb.created_at || new Date().toISOString(),
-          isSavedInSupabase: true,
-          lastSyncedAt: new Date().toISOString(),
-        }));
-
-        setBrands(loadedBrands);
-
-        // Automatically switch activeBrandId to a verified Supabase brand
-        setActiveBrandId((curr) => {
-          if (curr && remoteIds.has(curr)) return curr;
-          return loadedBrands[0].id;
-        });
-      } else if (remoteBrands && remoteBrands.length === 0) {
-        setSupabaseBrandIds(new Set());
-        setBrands([]);
-        setActiveBrandId('');
+      // 2) Brands table (merge, never overwrite)
+      if (status.tableExists) {
+        const remoteBrands = await fetchBrandsFromSupabase();
+        if (remoteBrands) {
+          const remoteIds = new Set(remoteBrands.map((rb) => rb.id));
+          setSupabaseBrandIds(remoteIds);
+          const merged = mergeRemoteBrands(baseBrands, remoteBrands);
+          setBrands(merged);
+          setActiveBrandId((curr) => (curr && merged.some((b) => b.id === curr) ? curr : merged[0]?.id || ''));
+        }
       }
     } catch (err) {
       console.error('Failed to sync with Supabase:', err);
+      setCloudSyncState('error');
     } finally {
       setIsSupabaseSyncing(false);
     }
@@ -354,12 +564,9 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     setSupabaseBrandIds(newSyncedIds);
     setBrands((prev) =>
-      prev.map((b) =>
-        newSyncedIds.has(b.id)
-          ? { ...b, isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() }
-          : b
-      )
+      prev.map((b) => (newSyncedIds.has(b.id) ? { ...b, isSavedInSupabase: true, lastSyncedAt: nowISO() } : b))
     );
+    await pushLibraryToCloud();
     return { success, failed };
   };
 
@@ -372,17 +579,11 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         id: brand.id,
         name: brand.name,
         image_url: brand.coverImage || '',
-        created_at: brand.createdAt || new Date().toISOString(),
+        created_at: brand.createdAt || nowISO(),
       });
       if (res) {
         setSupabaseBrandIds((prev) => new Set([...prev, id]));
-        setBrands((prev) =>
-          prev.map((b) =>
-            b.id === id
-              ? { ...b, isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() }
-              : b
-          )
-        );
+        setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, isSavedInSupabase: true, lastSyncedAt: nowISO() } : b)));
         return true;
       }
       return false;
@@ -399,23 +600,79 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isSupabaseConfigured) {
       syncWithSupabase();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Edit states
-  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
-  const [editingDirection, setEditingDirection] = useState<VisualDirection | null>(null);
-  const [editingAnalysis, setEditingAnalysis] = useState<VisualAnalysis | null>(null);
-  const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
-  const [editingAngle, setEditingAngle] = useState<CameraAngle | null>(null);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [editingCreativeRef, setEditingCreativeRef] = useState<CreativeReference | null>(null);
+  // Keep activeBrandId valid
+  useEffect(() => {
+    if (brands.length === 0) {
+      if (activeBrandId) setActiveBrandId('');
+      return;
+    }
+    if (!activeBrandId || !brands.some((b) => b.id === activeBrandId)) {
+      setActiveBrandId(brands[0].id);
+    }
+  }, [brands, activeBrandId]);
 
-  // Active Brand Helper
   const activeBrand = brands.find((b) => b.id === activeBrandId) || brands[0];
 
-  // Brand CRUD - Direct Supabase Operations with Local Fallback/Optimistic Update
+  /* ------------------------------ trash helpers ----------------------------- */
+
+  const pushToTrash = (type: TrashItemType, title: string, payload: unknown, children?: TrashItem['children']) => {
+    const item: TrashItem = { id: uid('trash'), type, title, deletedAt: nowISO(), payload, children };
+    setTrash((prev) => [item, ...prev].slice(0, 200));
+  };
+
+  const restoreFromTrash = (trashId: string) => {
+    const item = trash.find((t) => t.id === trashId);
+    if (!item) return;
+    const restoreOne = (type: TrashItemType, payload: any) => {
+      switch (type) {
+        case 'brand':
+          setBrands((prev) => (prev.some((b) => b.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'direction':
+          setDirections((prev) => (prev.some((d) => d.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'analysis':
+          setAnalyses((prev) => (prev.some((a) => a.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'product':
+          setProducts((prev) => (prev.some((p) => p.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'prompt':
+          setPrompts((prev) => (prev.some((p) => p.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'cameraAngle':
+          setCameraAngles((prev) => (prev.some((a) => a.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'creativeReference':
+          setCreativeReferences((prev) => (prev.some((r) => r.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+        case 'galleryReference':
+          setGalleryReferences((prev) => (prev.some((r) => r.id === payload.id) ? prev : [payload, ...prev]));
+          break;
+      }
+    };
+    restoreOne(item.type, item.payload);
+    item.children?.forEach((group) => group.items.forEach((child) => restoreOne(group.type, child)));
+    if (item.type === 'brand') {
+      const b = item.payload as Brand;
+      setActiveBrandId(b.id);
+      if (isSupabaseConfigured) {
+        insertBrandToSupabase({ id: b.id, name: b.name, image_url: b.coverImage || '', created_at: b.createdAt }).catch(() => undefined);
+      }
+    }
+    setTrash((prev) => prev.filter((t) => t.id !== trashId));
+  };
+
+  const purgeTrashItem = (trashId: string) => setTrash((prev) => prev.filter((t) => t.id !== trashId));
+  const emptyTrash = () => setTrash([]);
+
+  /* -------------------------------- Brand CRUD ------------------------------ */
+
   const addBrand = async (brandData: Omit<Brand, 'id' | 'createdAt'>): Promise<Brand> => {
-    const newId = 'brand-' + Date.now();
+    const newId = uid('brand');
     let savedInSupabase = false;
 
     if (isSupabaseConfigured) {
@@ -424,7 +681,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
           id: newId,
           name: brandData.name,
           image_url: brandData.coverImage || '',
-          created_at: new Date().toISOString(),
+          created_at: nowISO(),
         });
         if (res) {
           savedInSupabase = true;
@@ -437,49 +694,53 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const newBrand: Brand = {
       ...brandData,
+      brandCore: { ...EMPTY_BRAND_CORE, ...(brandData.brandCore || {}) },
+      brandColors: brandData.brandColors || [],
       id: newId,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
+      updatedAt: nowISO(),
       isSavedInSupabase: savedInSupabase,
-      lastSyncedAt: savedInSupabase ? new Date().toISOString() : undefined,
+      lastSyncedAt: savedInSupabase ? nowISO() : undefined,
     };
 
     setBrands((prev) => [newBrand, ...prev]);
     setActiveBrandId(newBrand.id);
-
     return newBrand;
   };
 
   const updateBrand = async (id: string, updates: Partial<Brand>): Promise<void> => {
-    let synced = false;
-    if (isSupabaseConfigured) {
+    // Optimistic local update first so the UI never waits on the network
+    setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates, updatedAt: nowISO() } : b)));
+
+    if (isSupabaseConfigured && (updates.name !== undefined || updates.coverImage !== undefined)) {
       try {
-        const res = await updateBrandInSupabase(id, {
-          name: updates.name,
-          image_url: updates.coverImage,
-        });
+        const payload: { name?: string; image_url?: string } = {};
+        if (updates.name !== undefined) payload.name = updates.name;
+        if (updates.coverImage !== undefined) payload.image_url = updates.coverImage;
+        const res = await updateBrandInSupabase(id, payload);
         if (res) {
-          synced = true;
           setSupabaseBrandIds((prev) => new Set([...prev, id]));
+          setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, isSavedInSupabase: true, lastSyncedAt: nowISO() } : b)));
         }
       } catch (e) {
         console.warn('Supabase brand update error:', e);
       }
     }
-
-    setBrands((prev) =>
-      prev.map((b) =>
-        b.id === id
-          ? {
-              ...b,
-              ...updates,
-              ...(synced ? { isSavedInSupabase: true, lastSyncedAt: new Date().toISOString() } : {}),
-            }
-          : b
-      )
-    );
   };
 
   const deleteBrand = async (id: string): Promise<void> => {
+    const brand = brands.find((b) => b.id === id);
+    if (!brand) return;
+
+    const childDirections = directions.filter((d) => d.brandId === id);
+    const childAnalyses = analyses.filter((a) => a.brandId === id);
+    const childProducts = products.filter((p) => p.brandId === id);
+    pushToTrash('brand', brand.name, brand, [
+      { type: 'direction', items: childDirections },
+      { type: 'analysis', items: childAnalyses },
+      { type: 'product', items: childProducts },
+    ]);
+
     if (isSupabaseConfigured) {
       try {
         await deleteBrandFromSupabase(id);
@@ -495,13 +756,12 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     setBrands((prev) => prev.filter((b) => b.id !== id));
+    setDirections((prev) => prev.filter((d) => d.brandId !== id));
+    setAnalyses((prev) => prev.filter((a) => a.brandId !== id));
+    setProducts((prev) => prev.filter((p) => p.brandId !== id));
     if (activeBrandId === id) {
       const remaining = brands.filter((b) => b.id !== id);
-      if (remaining.length > 0) {
-        setActiveBrandId(remaining[0].id);
-      } else {
-        setActiveBrandId('');
-      }
+      setActiveBrandId(remaining[0]?.id || '');
     }
   };
 
@@ -509,40 +769,37 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, starred: !b.starred } : b)));
   };
 
-  // Direction CRUD
+  /* ------------------------------ Direction CRUD ---------------------------- */
+
   const addDirection = (data: Omit<VisualDirection, 'id' | 'createdAt'>): VisualDirection => {
-    const newDir: VisualDirection = {
-      ...data,
-      id: 'dir-' + Date.now(),
-      createdAt: new Date().toISOString(),
-      analysesCount: 0,
-    };
+    const newDir: VisualDirection = { ...data, id: uid('dir'), createdAt: nowISO(), updatedAt: nowISO(), analysesCount: 0 };
     setDirections((prev) => [newDir, ...prev]);
     return newDir;
   };
 
   const updateDirection = (id: string, updates: Partial<VisualDirection>) => {
-    setDirections((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates } : d)));
+    setDirections((prev) => prev.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: nowISO() } : d)));
   };
 
   const deleteDirection = (id: string) => {
+    const dir = directions.find((d) => d.id === id);
+    if (!dir) return;
+    const childAnalyses = analyses.filter((a) => a.directionId === id);
+    pushToTrash('direction', dir.name, dir, [{ type: 'analysis', items: childAnalyses }]);
     setDirections((prev) => prev.filter((d) => d.id !== id));
     setAnalyses((prev) => prev.filter((a) => a.directionId !== id));
+    if (selectedDirectionId === id) setSelectedDirectionId(null);
   };
 
   const toggleStarDirection = (id: string) => {
     setDirections((prev) => prev.map((d) => (d.id === id ? { ...d, starred: !d.starred } : d)));
   };
 
-  // Analysis CRUD
+  /* ------------------------------ Analysis CRUD ----------------------------- */
+
   const addAnalysis = (data: Omit<VisualAnalysis, 'id' | 'createdAt'>): VisualAnalysis => {
-    const newAna: VisualAnalysis = {
-      ...data,
-      id: 'ana-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newAna: VisualAnalysis = { ...data, id: uid('ana'), createdAt: nowISO(), updatedAt: nowISO() };
     setAnalyses((prev) => [newAna, ...prev]);
-    // increment direction counter
     setDirections((prev) =>
       prev.map((d) => (d.id === data.directionId ? { ...d, analysesCount: (d.analysesCount || 0) + 1 } : d))
     );
@@ -550,58 +807,59 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const updateAnalysis = (id: string, updates: Partial<VisualAnalysis>) => {
-    setAnalyses((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+    setAnalyses((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: nowISO() } : a)));
   };
 
   const deleteAnalysis = (id: string) => {
     const target = analyses.find((a) => a.id === id);
+    if (!target) return;
+    pushToTrash('analysis', target.title, target);
     setAnalyses((prev) => prev.filter((a) => a.id !== id));
-    if (target) {
-      setDirections((prev) =>
-        prev.map((d) => (d.id === target.directionId ? { ...d, analysesCount: Math.max(0, (d.analysesCount || 1) - 1) } : d))
-      );
-    }
+    setDirections((prev) =>
+      prev.map((d) => (d.id === target.directionId ? { ...d, analysesCount: Math.max(0, (d.analysesCount || 1) - 1) } : d))
+    );
+    if (selectedAnalysisId === id) setSelectedAnalysisId(null);
   };
 
   const toggleStarAnalysis = (id: string) => {
     setAnalyses((prev) => prev.map((a) => (a.id === id ? { ...a, starred: !a.starred } : a)));
   };
 
-  // Product CRUD
+  /* ------------------------------- Product CRUD ----------------------------- */
+
   const addProduct = (data: Omit<Product, 'id' | 'createdAt'>): Product => {
-    const newProd: Product = {
-      ...data,
-      id: 'prod-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newProd: Product = { ...data, id: uid('prod'), createdAt: nowISO(), updatedAt: nowISO() };
     setProducts((prev) => [newProd, ...prev]);
     return newProd;
   };
 
   const updateProduct = (id: string, updates: Partial<Product>) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: nowISO() } : p)));
   };
 
   const deleteProduct = (id: string) => {
+    const target = products.find((p) => p.id === id);
+    if (!target) return;
+    pushToTrash('product', target.name, target);
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
 
-  // Prompt CRUD
+  /* -------------------------------- Prompt CRUD ----------------------------- */
+
   const addPrompt = (data: Omit<PromptItem, 'id' | 'createdAt'>): PromptItem => {
-    const newP: PromptItem = {
-      ...data,
-      id: 'prompt-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newP: PromptItem = { ...data, id: uid('prompt'), createdAt: nowISO(), updatedAt: nowISO() };
     setPrompts((prev) => [newP, ...prev]);
     return newP;
   };
 
   const updatePrompt = (id: string, updates: Partial<PromptItem>) => {
-    setPrompts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
+    setPrompts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: nowISO() } : p)));
   };
 
   const deletePrompt = (id: string) => {
+    const target = prompts.find((p) => p.id === id);
+    if (!target) return;
+    pushToTrash('prompt', target.name, target);
     setPrompts((prev) => prev.filter((p) => p.id !== id));
   };
 
@@ -609,22 +867,22 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPrompts((prev) => prev.map((p) => (p.id === id ? { ...p, starred: !p.starred } : p)));
   };
 
-  // Camera Angle CRUD
+  /* ----------------------------- Camera Angle CRUD -------------------------- */
+
   const addCameraAngle = (data: Omit<CameraAngle, 'id' | 'createdAt'>): CameraAngle => {
-    const newAngle: CameraAngle = {
-      ...data,
-      id: 'angle-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newAngle: CameraAngle = { ...data, tags: data.tags || [], id: uid('angle'), createdAt: nowISO(), updatedAt: nowISO() };
     setCameraAngles((prev) => [newAngle, ...prev]);
     return newAngle;
   };
 
   const updateCameraAngle = (id: string, updates: Partial<CameraAngle>) => {
-    setCameraAngles((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+    setCameraAngles((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: nowISO() } : a)));
   };
 
   const deleteCameraAngle = (id: string) => {
+    const target = cameraAngles.find((a) => a.id === id);
+    if (!target) return;
+    pushToTrash('cameraAngle', target.name, target);
     setCameraAngles((prev) => prev.filter((a) => a.id !== id));
   };
 
@@ -632,22 +890,22 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCameraAngles((prev) => prev.map((a) => (a.id === id ? { ...a, starred: !a.starred } : a)));
   };
 
-  // Creative Reference CRUD
+  /* -------------------------- Creative Reference CRUD ----------------------- */
+
   const addCreativeReference = (data: Omit<CreativeReference, 'id' | 'createdAt'>): CreativeReference => {
-    const newRef: CreativeReference = {
-      ...data,
-      id: 'cref-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newRef: CreativeReference = { ...data, id: uid('cref'), createdAt: nowISO(), updatedAt: nowISO() };
     setCreativeReferences((prev) => [newRef, ...prev]);
     return newRef;
   };
 
   const updateCreativeReference = (id: string, updates: Partial<CreativeReference>) => {
-    setCreativeReferences((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)));
+    setCreativeReferences((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates, updatedAt: nowISO() } : r)));
   };
 
   const deleteCreativeReference = (id: string) => {
+    const target = creativeReferences.find((r) => r.id === id);
+    if (!target) return;
+    pushToTrash('creativeReference', target.title, target);
     setCreativeReferences((prev) => prev.filter((r) => r.id !== id));
   };
 
@@ -655,38 +913,25 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCreativeReferences((prev) => prev.map((r) => (r.id === id ? { ...r, starred: !r.starred } : r)));
   };
 
-  // Gallery Reference CRUD
+  /* --------------------------- Gallery Reference CRUD ----------------------- */
+
   const addGalleryReference = (data: Omit<ReferenceImageItem, 'id' | 'createdAt'>): ReferenceImageItem => {
-    const newRef: ReferenceImageItem = {
-      ...data,
-      id: 'ref-' + Date.now(),
-      createdAt: new Date().toISOString(),
-    };
+    const newRef: ReferenceImageItem = { ...data, id: uid('ref'), createdAt: nowISO(), updatedAt: nowISO() };
     setGalleryReferences((prev) => [newRef, ...prev]);
     return newRef;
   };
 
   const deleteGalleryReference = (id: string) => {
+    const target = galleryReferences.find((r) => r.id === id);
+    if (!target) return;
+    pushToTrash('galleryReference', target.title || 'Reference', target);
     setGalleryReferences((prev) => prev.filter((r) => r.id !== id));
   };
 
-  // Export JSON
-  const exportLibraryJSON = () => {
-    const exportData = {
-      version: '1.0',
-      exportedAt: new Date().toISOString(),
-      appName: 'Creative Visual Library',
-      brands,
-      directions,
-      analyses,
-      products,
-      prompts,
-      cameraAngles,
-      creativeReferences,
-      galleryReferences,
-    };
+  /* ---------------------------- Export / Import ----------------------------- */
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+  const exportLibraryJSON = () => {
+    const blob = new Blob([JSON.stringify(buildSnapshot(), null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -697,34 +942,15 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     URL.revokeObjectURL(url);
   };
 
-  // Import JSON
   const importLibraryJSON = (jsonString: string): boolean => {
     try {
       const data = JSON.parse(jsonString);
-      if (data.brands && Array.isArray(data.brands)) {
-        setBrands(data.brands);
-      }
-      if (data.directions && Array.isArray(data.directions)) {
-        setDirections(data.directions);
-      }
-      if (data.analyses && Array.isArray(data.analyses)) {
-        setAnalyses(data.analyses);
-      }
-      if (data.products && Array.isArray(data.products)) {
-        setProducts(data.products);
-      }
-      if (data.prompts && Array.isArray(data.prompts)) {
-        setPrompts(data.prompts);
-      }
-      if (data.cameraAngles && Array.isArray(data.cameraAngles)) {
-        setCameraAngles(data.cameraAngles);
-      }
-      if (data.creativeReferences && Array.isArray(data.creativeReferences)) {
-        setCreativeReferences(data.creativeReferences);
-      }
-      if (data.galleryReferences && Array.isArray(data.galleryReferences)) {
-        setGalleryReferences(data.galleryReferences);
-      }
+      if (!data || typeof data !== 'object') return false;
+      const hasAnyCollection = ['brands', 'directions', 'analyses', 'products', 'prompts', 'cameraAngles', 'creativeReferences', 'galleryReferences'].some(
+        (k) => Array.isArray((data as any)[k])
+      );
+      if (!hasAnyCollection) return false;
+      applySnapshot(data, false);
       return true;
     } catch (err) {
       console.error('Import failed', err);
@@ -732,17 +958,11 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Reset
   const resetToDemoData = () => {
-    setBrands([]);
-    setDirections([]);
-    setAnalyses([]);
-    setProducts([]);
-    setPrompts([]);
-    setCameraAngles(INITIAL_CAMERA_ANGLES);
-    setCreativeReferences(INITIAL_CREATIVE_REFERENCES);
-    setGalleryReferences([]);
+    applySnapshot({ cameraAngles: INITIAL_CAMERA_ANGLES, creativeReferences: INITIAL_CREATIVE_REFERENCES }, true);
     setActiveBrandId('');
+    setSelectedDirectionId(null);
+    setSelectedAnalysisId(null);
   };
 
   const t = translations[lang];
@@ -757,6 +977,8 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isRTL,
         theme,
         toggleTheme,
+        isSidebarOpen,
+        setIsSidebarOpen,
 
         activeNav,
         setActiveNav,
@@ -777,6 +999,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         cameraAngles,
         creativeReferences,
         galleryReferences,
+        trash,
 
         activeBrand,
 
@@ -816,6 +1039,10 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         addGalleryReference,
         deleteGalleryReference,
+
+        restoreFromTrash,
+        purgeTrashItem,
+        emptyTrash,
 
         searchQuery,
         setSearchQuery,
@@ -859,8 +1086,8 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         exportLibraryJSON,
         importLibraryJSON,
         resetToDemoData,
+        lastSavedAt,
 
-        // Supabase
         isSupabaseModalOpen,
         setIsSupabaseModalOpen,
         isSupabaseConfigured,
@@ -873,6 +1100,8 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         syncWithSupabase,
         pushBrandsToSupabase,
         checkSupabaseHealth,
+        cloudSyncState,
+        pushLibraryToCloud,
       }}
     >
       {children}

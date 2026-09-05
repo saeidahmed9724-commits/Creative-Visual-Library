@@ -4,14 +4,12 @@ import {
   Edit3,
   Check,
   X,
-  AlertTriangle,
   Camera,
   Layers,
   Palette,
   Type,
   ShieldAlert,
-  FileText,
-} from 'lucide-react';
+  FileText } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { BrandCore } from '../../types';
 

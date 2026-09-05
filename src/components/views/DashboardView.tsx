@@ -4,16 +4,11 @@ import {
   BookmarkCheck,
   Plus,
   ArrowRight,
-  Sparkles,
-  ExternalLink,
   Copy,
   Check,
-  Eye,
-  Maximize2,
-  Camera,
-} from 'lucide-react';
+  Camera } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { VisualDirection, PromptItem } from '../../types';
+import { PromptItem } from '../../types';
 
 export const DashboardView: React.FC = () => {
   const {
@@ -28,12 +23,10 @@ export const DashboardView: React.FC = () => {
     setSelectedDirectionId,
     setBrandSubTab,
     setIsAddBrandModalOpen,
-    setIsAddDirectionModalOpen,
     setIsAddProductModalOpen,
     setIsAddPromptModalOpen,
     setIsAddAngleModalOpen,
-    setEditingPrompt,
-  } = useLibrary();
+    setEditingPrompt } = useLibrary();
 
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null);
@@ -80,20 +73,16 @@ export const DashboardView: React.FC = () => {
           <div className="space-y-1 text-center md:text-start">
             <div className="flex items-center justify-center md:justify-start gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              <h3 className="text-sm font-semibold text-white">
-                Supabase Live Database Active • Zero Fake Brands
-              </h3>
+              <h3 className="text-sm font-semibold text-white">{t.noBrandsYet}</h3>
             </div>
-            <p className="text-xs text-[#A1A1AA]">
-              تم حذف كل البراندات الوهمية وإلغاء التخزين المحلي بالكامل. قاعدة بياناتك الآن نظيفة ومتصلة مباشرة بسحابة Supabase.
-            </p>
+            <p className="text-xs text-[#A1A1AA]">{t.noBrandsYetDesc}</p>
           </div>
           <button
             onClick={() => setIsAddBrandModalOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-[0_0_20px_rgba(124,58,237,0.35)] transition-all cursor-pointer whitespace-nowrap"
           >
             <Plus className="w-4 h-4" />
-            <span>+ {t.addNewBrand || 'Create Brand'}</span>
+            <span>{t.addNewBrand}</span>
           </button>
         </div>
       )}
@@ -125,7 +114,7 @@ export const DashboardView: React.FC = () => {
                 {/* Image Container */}
                 <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-[#0A0A0A] mb-2.5">
                   <img
-                    src={dir.image}
+                    src={dir.image || undefined}
                     alt={dir.name}
                     className="w-full h-full object-cover object-center grayscale contrast-125 group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
@@ -195,7 +184,7 @@ export const DashboardView: React.FC = () => {
                 className="group relative aspect-[4/3] rounded-xl overflow-hidden bg-[#111111] border border-[#1F1F1F] hover:border-violet-500/50 cursor-pointer transition-all hover:shadow-[0_0_15px_rgba(124,58,237,0.3)]"
               >
                 <img
-                  src={ref.url}
+                  src={ref.url || undefined}
                   alt={ref.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 grayscale contrast-115"
                   loading="lazy"
@@ -240,7 +229,7 @@ export const DashboardView: React.FC = () => {
               >
                 <div className="aspect-square rounded-lg overflow-hidden bg-[#0A0A0A] mb-1.5">
                   <img
-                    src={prod.mainImage}
+                    src={prod.mainImage || undefined}
                     alt={prod.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                     loading="lazy"

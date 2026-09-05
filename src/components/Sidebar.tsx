@@ -15,6 +15,10 @@ import {
   ChevronRight,
   Plus,
   Database,
+  X,
+  Cloud,
+  CloudOff,
+  Loader2,
 } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 import { ActiveNavSection } from '../types';
@@ -32,6 +36,9 @@ export const Sidebar: React.FC = () => {
     setIsSupabaseModalOpen,
     isSupabaseConfigured,
     supabaseStatus,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    cloudSyncState,
   } = useLibrary();
 
   const mainNavItems: { id: ActiveNavSection; label: string; icon: React.ReactNode; badge?: number }[] = [
@@ -92,10 +99,23 @@ export const Sidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-[#0A0A0A] border-r border-[#1F1F1F] flex flex-col justify-between h-screen sticky top-0 select-none z-30">
+    <aside
+      className={`w-72 sm:w-64 flex-shrink-0 bg-[#0A0A0A] border-e border-[#1F1F1F] flex flex-col justify-between h-[100dvh] select-none z-50
+        fixed inset-y-0 start-0 transition-transform duration-300 ease-out
+        ${isSidebarOpen ? 'translate-x-0' : 'ltr:-translate-x-full rtl:translate-x-full'}
+        lg:sticky lg:top-0 lg:translate-x-0 lg:z-30`}
+      aria-label={t.menu}
+    >
       {/* Top Header & Logo */}
       <div className="p-5 pb-3">
         <div className="flex items-center gap-3 px-1 mb-6">
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden absolute top-4 end-4 p-1.5 rounded-lg text-[#A1A1AA] hover:text-white hover:bg-white/5"
+            aria-label={t.closeMenu}
+          >
+            <X className="w-4 h-4" />
+          </button>
           <div className="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(124,58,237,0.4)] flex-shrink-0">
             <span className="font-bold text-white text-xs tracking-wider">CVL</span>
           </div>
@@ -267,7 +287,13 @@ export const Sidebar: React.FC = () => {
             <span className="font-semibold text-white text-[11px]">{t.supabaseDatabase || 'Supabase Database'}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-mono text-[#52525B]">brands</span>
+            {cloudSyncState === 'syncing' ? (
+              <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+            ) : cloudSyncState === 'synced' ? (
+              <Cloud className="w-3 h-3 text-emerald-400" />
+            ) : (
+              <CloudOff className="w-3 h-3 text-[#52525B]" />
+            )}
             <span
               className={`w-2 h-2 rounded-full ${
                 isSupabaseConfigured

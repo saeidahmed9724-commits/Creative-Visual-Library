@@ -1,15 +1,12 @@
 import React from 'react';
 import {
-  Building2,
   Plus,
   ArrowRight,
   Edit,
   Trash2,
-  Sparkles,
   Cloud,
   HardDrive,
-  RefreshCw,
-} from 'lucide-react';
+  RefreshCw } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 
 export const BrandsOverviewView: React.FC = () => {
@@ -76,7 +73,7 @@ export const BrandsOverviewView: React.FC = () => {
               {brand.coverImage && (
                 <div className="-mx-5 -mt-5 mb-4 h-28 relative overflow-hidden border-b border-white/5">
                   <img
-                    src={brand.coverImage}
+                    src={brand.coverImage || undefined}
                     alt={brand.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
@@ -96,7 +93,7 @@ export const BrandsOverviewView: React.FC = () => {
                     <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2a1334] via-[#1e1329] to-[#0d0a14] border border-purple-400/30 flex flex-col items-center justify-center p-1 flex-shrink-0 shadow-[0_0_15px_rgba(147,51,234,0.25)] group-hover:border-purple-400/60 transition-colors overflow-hidden">
                       {brand.coverImage ? (
                         <img
-                          src={brand.coverImage}
+                          src={brand.coverImage || undefined}
                           alt={brand.name}
                           className="w-full h-full object-cover rounded-xl"
                         />
@@ -168,7 +165,9 @@ export const BrandsOverviewView: React.FC = () => {
                       <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => deleteBrand(brand.id)}
+                      onClick={() => {
+                        if (window.confirm(t.confirmDelete)) deleteBrand(brand.id);
+                      }}
                       className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10"
                       title={t.delete || 'Delete'}
                     >

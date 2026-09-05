@@ -1,11 +1,45 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  html {
+    background-color: #050505;
+    color-scheme: dark;
+  }
   body {
     font-family: 'Poppins', 'Tajawal', system-ui, -apple-system, sans-serif;
     background-color: #050505;
     color: #E0E0E0;
+    min-height: 100dvh;
   }
+  html[lang='ar'] body {
+    font-family: 'Tajawal', 'Poppins', system-ui, -apple-system, sans-serif;
+  }
+  img {
+    max-width: 100%;
+  }
+  /* Broken image URLs shouldn't show the ugly default icon */
+  img:not([src]),
+  img[src=''] {
+    visibility: hidden;
+  }
+}
+
+/* Simple keyframe utilities used across modals (animate-in / fade-in / zoom-in-95) */
+@keyframes cvl-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes cvl-zoom-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-in.fade-in {
+  animation: cvl-fade-in 0.18s ease-out both;
+}
+.animate-in.zoom-in-95 {
+  animation: cvl-zoom-in 0.18s ease-out both;
 }
 
 /* Custom scrollbars */

@@ -29,6 +29,31 @@ DROP POLICY IF EXISTS "Allow public delete access" ON public.brands;
 CREATE POLICY "Allow public delete access" ON public.brands
   FOR DELETE USING (true);
 
+-- 3b. Full-library cloud sync table (stores the whole library as JSON so it follows you across devices)
+CREATE TABLE IF NOT EXISTS public.library_snapshots (
+  id TEXT PRIMARY KEY,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.library_snapshots ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read snapshots" ON public.library_snapshots;
+CREATE POLICY "Allow public read snapshots" ON public.library_snapshots
+  FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert snapshots" ON public.library_snapshots;
+CREATE POLICY "Allow public insert snapshots" ON public.library_snapshots
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public update snapshots" ON public.library_snapshots;
+CREATE POLICY "Allow public update snapshots" ON public.library_snapshots
+  FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Allow public delete snapshots" ON public.library_snapshots;
+CREATE POLICY "Allow public delete snapshots" ON public.library_snapshots
+  FOR DELETE USING (true);
+
 -- 4. Storage Bucket Policies for 'brand-images'
 -- Ensures the 'brand-images' storage bucket exists, is Public, and allows public image uploads
 INSERT INTO storage.buckets (id, name, public)

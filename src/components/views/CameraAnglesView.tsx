@@ -7,9 +7,7 @@ import {
   Bookmark,
   BookmarkCheck,
   Edit,
-  Trash2,
-  Maximize2,
-} from 'lucide-react';
+  Trash2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { CameraAngle } from '../../types';
 

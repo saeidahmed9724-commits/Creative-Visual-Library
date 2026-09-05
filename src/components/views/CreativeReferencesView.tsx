@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Lightbulb,
   Plus,
   ThumbsUp,
   Target,
   Bookmark,
   BookmarkCheck,
   Edit,
-  Trash2,
-  Maximize2,
-} from 'lucide-react';
+  Trash2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { CreativeReference } from '../../types';
 
 export const CreativeReferencesView: React.FC = () => {
   const {
@@ -64,7 +60,7 @@ export const CreativeReferencesView: React.FC = () => {
                 className="relative aspect-video overflow-hidden bg-black/40 cursor-pointer"
               >
                 <img
-                  src={ref.image}
+                  src={ref.image || undefined}
                   alt={ref.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"

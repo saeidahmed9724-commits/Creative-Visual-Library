@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Camera } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
+import { CameraAngle } from '../../types';
+
+type DiagramType = NonNullable<CameraAngle['diagramType']>;
 
 export const CameraAngleModal: React.FC = () => {
   const {
@@ -15,7 +18,7 @@ export const CameraAngleModal: React.FC = () => {
 
   const [name, setName] = useState('');
   const [shotType, setShotType] = useState('Medium Shot');
-  const [diagramType, setDiagramType] = useState<'45-degree' | 'low-angle' | 'top-down' | 'close-up'>('45-degree');
+  const [diagramType, setDiagramType] = useState<DiagramType>('45-degree');
   const [description, setDescription] = useState('');
   const [prompt, setPrompt] = useState('');
 
@@ -56,6 +59,7 @@ export const CameraAngleModal: React.FC = () => {
         diagramType,
         description,
         prompt,
+        tags: [],
         starred: false,
       });
     }

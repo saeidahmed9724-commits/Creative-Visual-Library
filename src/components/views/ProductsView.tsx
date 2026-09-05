@@ -1,27 +1,18 @@
 import React from 'react';
 import {
-  Package,
   Plus,
   Edit,
-  Trash2,
-  Bookmark,
-  BookmarkCheck,
-  Building2,
-} from 'lucide-react';
+  Trash2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
-import { Product } from '../../types';
 
 export const ProductsView: React.FC = () => {
   const {
     t,
     products,
-    brands,
     activeBrand,
-    activeBrandId,
     setIsAddProductModalOpen,
     setEditingProduct,
-    deleteProduct,
-  } = useLibrary();
+    deleteProduct } = useLibrary();
 
   const brandProducts = products.filter(
     (p) => !activeBrand || p.brandId === activeBrand.id
@@ -62,7 +53,7 @@ export const ProductsView: React.FC = () => {
             <div>
               <div className="relative aspect-square rounded-xl overflow-hidden bg-black/40 mb-3">
                 <img
-                  src={prod.mainImage}
+                  src={prod.mainImage || undefined}
                   alt={prod.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   loading="lazy"

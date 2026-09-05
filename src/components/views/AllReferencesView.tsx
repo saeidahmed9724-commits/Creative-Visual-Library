@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import {
-  Image as ImageIcon,
+  Image as 
   Plus,
-  Bookmark,
-  BookmarkCheck,
   Maximize2,
   Trash2,
-  Filter,
-} from 'lucide-react';
+  Filter } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 
 export const AllReferencesView: React.FC = () => {
@@ -151,7 +148,7 @@ export const AllReferencesView: React.FC = () => {
             className="group relative aspect-[4/3] rounded-2xl overflow-hidden bg-black/40 border border-white/5 hover:border-purple-500/40 cursor-pointer transition-all hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]"
           >
             <img
-              src={ref.url}
+              src={ref.url || undefined}
               alt={ref.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               loading="lazy"

@@ -1,4 +1,3 @@
-import { VisualAnalysis } from '../types';
 
 export interface ParsedAnalysisFields {
   title?: string;

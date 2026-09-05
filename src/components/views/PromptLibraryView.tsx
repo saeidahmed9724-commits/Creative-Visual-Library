@@ -5,17 +5,14 @@ import {
   Search,
   Copy,
   Check,
-  Tag,
   Bookmark,
   BookmarkCheck,
   Edit,
   Trash2,
-  ImageIcon,
   Maximize2,
   X,
   ExternalLink,
-  UploadCloud,
-} from 'lucide-react';
+  UploadCloud } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { PromptItem } from '../../types';
 
@@ -132,7 +129,7 @@ export const PromptLibraryView: React.FC = () => {
                 {p.imageUrl ? (
                   <div className="relative group/thumb md:w-52 lg:w-64 shrink-0 rounded-xl overflow-hidden border border-purple-500/25 bg-black/60 aspect-[16/10] md:aspect-auto md:min-h-[170px]">
                     <img
-                      src={p.imageUrl}
+                      src={p.imageUrl || undefined}
                       alt={p.name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105 cursor-pointer"
                       onClick={() => setLightboxImage(p.imageUrl!)}

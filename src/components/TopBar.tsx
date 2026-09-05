@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  Sun,
-  Moon,
+  Menu,
+  Settings,
   Bell,
   Plus,
   ChevronDown,
@@ -13,18 +13,18 @@ import {
   Camera,
   Package,
   Lightbulb,
-  FileUp,
   Database,
   Cloud,
-  HardDrive,
-} from 'lucide-react';
+  HardDrive } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 
 export const TopBar: React.FC = () => {
   const {
     t,
-    theme,
-    toggleTheme,
+    setIsSidebarOpen,
+    setIsBackupModalOpen,
+    trash,
+    setActiveNav,
     setIsCommandSearchOpen,
     setIsImportModalOpen,
     setIsAddBrandModalOpen,
@@ -77,9 +77,16 @@ export const TopBar: React.FC = () => {
   const activeBrand = brands.find((b) => b.id === activeBrandId) || brands[0];
 
   return (
-    <header className="h-16 px-6 sm:px-8 border-b border-[#1F1F1F] bg-[#050505]/80 backdrop-blur-md flex items-center justify-between sticky top-0 z-20">
-      {/* Left: Search input & Brand Quick Select */}
-      <div className="flex items-center gap-4 flex-1 max-w-xl">
+    <header className="h-16 px-3 sm:px-8 border-b border-[#1F1F1F] bg-[#050505]/80 backdrop-blur-md flex items-center justify-between gap-2 sticky top-0 z-20">
+      {/* Left: Menu (mobile), Search input & Brand Quick Select */}
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-xl min-w-0">
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="lg:hidden p-2 rounded-full text-[#A1A1AA] hover:text-white hover:bg-white/5 border border-transparent hover:border-[#1F1F1F] transition-all flex-shrink-0"
+          aria-label={t.menu}
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         {/* Universal Search trigger button */}
         <button
           onClick={() => setIsCommandSearchOpen(true)}
@@ -115,7 +122,7 @@ export const TopBar: React.FC = () => {
             </button>
 
             {isBrandSelectOpen && (
-              <div className="absolute left-0 mt-1.5 w-60 rounded-xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute start-0 mt-1.5 w-60 rounded-xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-1.5 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-2 py-1 text-[10px] uppercase font-bold text-[#52525B] tracking-wider flex items-center justify-between">
                   <span>{t.brands}</span>
                   <span className="text-[9px] text-[#52525B] font-mono">Cloud / Local</span>
@@ -184,7 +191,7 @@ export const TopBar: React.FC = () => {
         {/* Supabase Cloud Sync Status Pill */}
         <button
           onClick={() => setIsSupabaseModalOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#111111] hover:bg-[#161616] border border-[#1F1F1F] hover:border-emerald-500/40 text-xs text-[#A1A1AA] hover:text-white transition-all cursor-pointer group"
+          className="flex items-center gap-2 px-2.5 sm:px-3 py-1.5 rounded-full bg-[#111111] hover:bg-[#161616] border border-[#1F1F1F] hover:border-emerald-500/40 text-xs text-[#A1A1AA] hover:text-white transition-all cursor-pointer group"
           title="Supabase PostgreSQL Sync"
         >
           <div className="flex items-center gap-1.5">
@@ -210,23 +217,26 @@ export const TopBar: React.FC = () => {
           </div>
         </button>
 
-        {/* Theme Toggle */}
+        {/* Settings & Backup */}
         <button
-          onClick={toggleTheme}
-          className="p-2 rounded-full text-[#A1A1AA] hover:text-white hover:bg-white/5 border border-transparent hover:border-[#1F1F1F] transition-all"
-          title={t.toggleTheme}
+          onClick={() => setIsBackupModalOpen(true)}
+          className="hidden sm:inline-flex p-2 rounded-full text-[#A1A1AA] hover:text-white hover:bg-white/5 border border-transparent hover:border-[#1F1F1F] transition-all"
+          title={t.settings}
         >
-          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          <Settings className="w-4 h-4" />
         </button>
 
-        {/* Notifications Icon with dot */}
-        <div className="relative">
+        {/* Trash indicator */}
+        <div className="relative hidden sm:block">
           <button
+            onClick={() => setActiveNav('trash')}
             className="p-2 rounded-full text-[#A1A1AA] hover:text-white hover:bg-white/5 border border-transparent hover:border-[#1F1F1F] transition-all"
-            title={t.notifications}
+            title={t.trash}
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-violet-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(124,58,237,0.8)]" />
+            {trash.length > 0 && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(124,58,237,0.8)]" />
+            )}
           </button>
         </div>
 
@@ -237,12 +247,12 @@ export const TopBar: React.FC = () => {
             className="bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold px-4 py-2 rounded-full shadow-[0_0_20px_rgba(124,58,237,0.3)] flex items-center gap-2 transition-all cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span className="uppercase tracking-wider">{t.addNew}</span>
+            <span className="uppercase tracking-wider hidden sm:inline">{t.addNew}</span>
             <ChevronDown className="w-3 h-3 text-white/80" />
           </button>
 
           {isAddMenuOpen && (
-            <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95">
+            <div className="absolute end-0 mt-2 w-64 rounded-2xl bg-[#0A0A0A] border border-[#1F1F1F] shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95">
               {/* Highlighted Import ChatGPT item */}
               <button
                 onClick={() => {

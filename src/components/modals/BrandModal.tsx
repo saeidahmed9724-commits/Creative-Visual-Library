@@ -8,9 +8,7 @@ import {
   Check,
   AlertCircle,
   Copy,
-  Loader2,
-  Sparkles,
-} from 'lucide-react';
+  Loader2 } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 import { uploadBrandImageToStorage, isSupabaseConfigured, SUPABASE_BRAND_IMAGES_BUCKET } from '../../lib/supabase';
 

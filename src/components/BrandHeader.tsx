@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, Cloud, HardDrive, RefreshCw, CheckCircle2, Database } from 'lucide-react';
+import { Edit2, Cloud, HardDrive, RefreshCw } from 'lucide-react';
 import { useLibrary } from '../context/LibraryContext';
 import { BrandSubTab } from '../types';
 
@@ -13,9 +13,7 @@ export const BrandHeader: React.FC = () => {
     setIsAddBrandModalOpen,
     isBrandSavedInSupabase,
     syncBrandToSupabase,
-    isSyncingBrandId,
-    setIsSupabaseModalOpen,
-  } = useLibrary();
+    isSyncingBrandId } = useLibrary();
 
   if (!activeBrand) return null;
 
@@ -40,7 +38,7 @@ export const BrandHeader: React.FC = () => {
         {activeBrand.coverImage ? (
           <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-15">
             <img
-              src={activeBrand.coverImage}
+              src={activeBrand.coverImage || undefined}
               alt=""
               className="w-full h-full object-cover blur-2xl scale-110"
             />
@@ -65,7 +63,7 @@ export const BrandHeader: React.FC = () => {
               {activeBrand.coverImage ? (
                 <>
                   <img
-                    src={activeBrand.coverImage}
+                    src={activeBrand.coverImage || undefined}
                     alt={activeBrand.name}
                     className="w-full h-full object-cover rounded-xl"
                   />

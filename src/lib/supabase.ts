@@ -260,6 +260,82 @@ export async function testSupabaseConnection(): Promise<{
   }
 }
 
+/* -------------------------------------------------------------------------- */
+/*  Full-library cloud snapshot (optional table: library_snapshots)           */
+/* -------------------------------------------------------------------------- */
+
+export const LIBRARY_SNAPSHOT_TABLE = 'library_snapshots';
+export const LIBRARY_SNAPSHOT_KEY = 'default';
+
+export interface LibrarySnapshotRow {
+  id: string;
+  data: unknown;
+  updated_at: string;
+}
+
+export type SnapshotFetchResult =
+  | { status: 'ok'; row: LibrarySnapshotRow | null }
+  | { status: 'missing-table' }
+  | { status: 'error'; message: string };
+
+function isMissingTableError(error: { code?: string; message?: string } | null | undefined): boolean {
+  if (!error) return false;
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    (error.message || '').toLowerCase().includes('does not exist') ||
+    (error.message || '').toLowerCase().includes('could not find the table')
+  );
+}
+
+/**
+ * Fetch the full library snapshot from Supabase. Returns `missing-table` when the
+ * optional table has not been created yet so callers can silently fall back to local storage.
+ */
+export async function fetchLibrarySnapshot(key: string = LIBRARY_SNAPSHOT_KEY): Promise<SnapshotFetchResult> {
+  if (!supabase) return { status: 'error', message: 'Supabase is not configured' };
+  try {
+    const { data, error } = await supabase
+      .from(LIBRARY_SNAPSHOT_TABLE)
+      .select('id, data, updated_at')
+      .eq('id', key)
+      .maybeSingle();
+
+    if (error) {
+      if (isMissingTableError(error)) return { status: 'missing-table' };
+      return { status: 'error', message: error.message };
+    }
+    return { status: 'ok', row: (data as LibrarySnapshotRow | null) ?? null };
+  } catch (err: any) {
+    return { status: 'error', message: err?.message || 'Network error' };
+  }
+}
+
+/**
+ * Upsert the full library snapshot to Supabase. Returns false silently if the table is missing.
+ */
+export async function saveLibrarySnapshot(
+  data: unknown,
+  key: string = LIBRARY_SNAPSHOT_KEY
+): Promise<{ ok: boolean; missingTable: boolean }> {
+  if (!supabase) return { ok: false, missingTable: false };
+  try {
+    const { error } = await (supabase.from(LIBRARY_SNAPSHOT_TABLE) as any).upsert(
+      { id: key, data, updated_at: new Date().toISOString() },
+      { onConflict: 'id' }
+    );
+    if (error) {
+      if (isMissingTableError(error)) return { ok: false, missingTable: true };
+      console.warn('Error saving library snapshot:', error.message);
+      return { ok: false, missingTable: false };
+    }
+    return { ok: true, missingTable: false };
+  } catch (err) {
+    console.warn('Snapshot save exception:', err);
+    return { ok: false, missingTable: false };
+  }
+}
+
 export const SUPABASE_BRAND_IMAGES_BUCKET = 'brand-images';
 
 export interface StorageUploadResult {
@@ -476,8 +552,11 @@ export async function uploadPromptImageToStorage(
         contentType,
       });
 
-    if (error) {
+    if (error || !data) {
       console.warn('Supabase storage upload error for prompt:', error);
+      if (!error) {
+        return { publicUrl: null, path: null, error: 'Upload returned no data', isRlsPolicyError: false };
+      }
       const isRls =
         error.message?.toLowerCase().includes('violates row-level security') ||
         error.message?.toLowerCase().includes('security policy') ||

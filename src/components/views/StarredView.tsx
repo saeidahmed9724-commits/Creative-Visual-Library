@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Sparkles, Compass, Camera, Lightbulb, FileText } from 'lucide-react';
+import { Star, Sparkles, Compass, Camera } from 'lucide-react';
 import { useLibrary } from '../../context/LibraryContext';
 
 export const StarredView: React.FC = () => {
@@ -70,7 +70,7 @@ export const StarredView: React.FC = () => {
                   >
                     <div className="aspect-[4/3] rounded-lg overflow-hidden mb-2">
                       <img
-                        src={dir.image}
+                        src={dir.image || undefined}
                         alt={dir.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                       />

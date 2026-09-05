@@ -13,9 +13,7 @@ import {
 import { useLibrary } from '../../context/LibraryContext';
 import {
   uploadPromptImageToStorage,
-  isSupabaseConfigured,
-  SUPABASE_BRAND_IMAGES_BUCKET,
-} from '../../lib/supabase';
+  isSupabaseConfigured } from '../../lib/supabase';
 
 export const PromptModal: React.FC = () => {
   const {
@@ -167,6 +165,7 @@ CREATE POLICY "Allow public update brand-images" ON storage.objects FOR UPDATE U
         usage,
         tags,
         imageUrl: cleanImageUrl,
+        description: usage || style || '',
         starred: false,
       });
     }
